@@ -168,6 +168,8 @@ stage
 
 # Apple Xcode IDE
 Xcode/
+*.xcuserdata
+xcuserdata
 
 # gdb
 .gdb_history
