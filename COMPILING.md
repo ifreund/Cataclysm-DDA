@@ -1,3 +1,25 @@
+* [General Linux Guide](#general-linux-guide)
+  * [Compiler](#compiler)
+  * [Tools](#tools)
+  * [Dependencies](#dependencies)
+  * [Make flags](#make-flags)
+* [Debian](#debian)
+  * [Linux (native) ncurses builds](#linux-native-ncurses-builds)
+  * [Linux (native) SDL builds](#linux-native-sdl-builds)
+  * [Cross-compiling to linux 32-bit from linux 64-bit](#cross-compiling-to-linux-32-bit-from-linux-64-bit)
+  * [Cross-compile to Windows from Linux](#cross-compile-to-windows-from-linux)
+  * [Cross-compile to Mac OS X from Linux](#cross-compile-to-mac-os-x-from-linux)
+  * [Cross-compile to Android from Linux](#cross-compile-to-android-from-linux)
+* [Mac OS X](#mac-os-x)
+  * [Simple build using Homebrew](#simple-build-using-homebrew)
+  * [Advanced info for Developers](#advanced-info-for-developers)
+  * [Troubleshooting](#troubleshooting)
+* [Windows](#windows)
+  * [Visual Studio Guide](#visual-studio-guide)
+  * [MinGW Guide](#mingw-guide)
+  * [Rough guide to building with only MSYS2](#rough-guide-to-building-with-only-msys2)
+* [BSDs](#bsds)
+
 # General Linux Guide
 
 To build Cataclysm from source you will need at least a C++ compiler, some basic developer tools, and necessary build dependencies. The exact package names vary greatly from distro to distro, so this part of the guide is intended to give you higher-level understanding of the process.
@@ -99,7 +121,7 @@ Dependencies:
 
 Install:
 
-    sudo apt-get install libncurses5-dev libncursesw5-dev build-essential
+    sudo apt-get install libncurses5-dev libncursesw5-dev build-essential astyle
 
 ### Building
 
@@ -115,16 +137,26 @@ Dependencies:
   * SDL_ttf
   * freetype
   * build essentials
+  * lua5.2 and liblua5.2 - Only necessary if compiling with lua, which some mods like stats through skills use. Versions 5.1, 5.2 and 5.3 are supported.
+  * libsdl2-mixer-dev - Used if compiling with sound support.
 
 Install:
 
-    sudo apt-get install libsdl1.2-dev libsdl-ttf2.0-dev libfreetype6-dev build-essential
+    sudo apt-get install libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev libfreetype6-dev build-essential lua5.2 liblua5.2-dev
 
 ### Building
 
-Run:
+A simple installation could be done by simply running:
 
     make TILES=1
+
+A more comprehensive alternative is:
+
+    make -j2 TILES=1 SOUND=1 RELEASE=1 LUA=1 USE_HOME_DIR=1
+
+The -j2 flag means it will compile with two parallel processes. It can be omitted or changed to -j4 in a more modern processor. If there is no desire to use lua, or have sound, those flags can also be omitted. The USE_HOME_DIR flag places the user files, like configurations and saves into the home folder, making It easier for backups, and can also be omitted.
+
+
 
 ## Cross-compiling to linux 32-bit from linux 64-bit
 
@@ -251,37 +283,106 @@ To build full curses version with localizations and lua enabled:
 
 Make sure that `x86_64-apple-darwin15-clang++` is in `PATH` environment variable.
 
+## Cross-compile to Android from Linux
+
+The Android build uses [Gradle](https://gradle.org/) to compile the java and native C++ code, and is based heavily off SDL's [Android project template](https://hg.libsdl.org/SDL/file/f1084c419f33/android-project). See the official SDL documentation [README-android.md](https://hg.libsdl.org/SDL/file/f1084c419f33/docs/README-android.md) for further information.
+
+The Gradle project lives in the repository under `android/`. You can build it via the command line or open it in [Android Studio](https://developer.android.com/studio/). For simplicity, it only builds the SDL version with all features enabled, including tiles, sound, localization and lua.
+
+### Dependencies
+
+  * Java JDK 8
+  * SDL2 (tested with 2.0.8, though a custom fork is recommended with project-specific bugfixes)
+  * SDL2_ttf (tested with 2.0.14)
+  * SDL2_mixer (tested with 2.0.2)
+  * SDL2_image (tested with 2.0.3)
+  * libintl-lite (tested with a custom fork of libintl-lite 0.5)
+  * lua (tested with lua 5.1.5)
+
+The Gradle build process automatically installs dependencies from [deps.zip](android/app/deps.zip).
+
+### Setup
+
+Install Linux dependencies. For a desktop Ubuntu installation:
+
+    sudo apt-get install lua5.2 openjdk-8-jdk-headless
+
+Install Android SDK and NDK:
+
+    wget https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip
+    unzip sdk-tools-linux-4333796.zip -d ~/android-sdk
+    rm sdk-tools-linux-4333796.zip
+    ~/android-sdk/tools/bin/sdkmanager --update
+    ~/android-sdk/tools/bin/sdkmanager "tools" "platform-tools" "ndk-bundle"
+    ~/android-sdk/tools/bin/sdkmanager --licenses
+
+Export Android environment variables (you can add these to the end of `~/.bashrc`):
+
+    export ANDROID_SDK_ROOT=~/android-sdk
+    export ANDROID_HOME=~/android-sdk
+    export ANDROID_NDK_ROOT=~/android-sdk/ndk-bundle
+    export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
+    export PATH=$PATH:$ANDROID_SDK_ROOT/tools
+    export PATH=$PATH:$ANDROID_NDK_ROOT
+
+### Android device setup
+
+Enable [Developer options on your Android device](https://developer.android.com/studio/debug/dev-options). Connect your device to your PC via USB cable and run:
+
+    adb devices
+    adb connect <devicename>
+
+### Building
+
+To build an APK, use the Gradle wrapper command line tool (gradlew). The Android Studio documentation provides a good summary of how to [build your app from the command line](https://developer.android.com/studio/build/building-cmdline).
+
+To build a debug APK, from the `android/` subfolder of the repository run:
+
+    ./gradlew assembleDebug
+
+This creates a debug APK in `./android/app/build/outputs/apk/` ready to be installed on your device.
+
+To build a debug APK and immediately deploy to your connected device over adb run:
+
+    ./gradlew installDebug
+
+To build a signed release APK (ie. one that can be installed on a device), [build an unsigned release APK and sign it manually](https://developer.android.com/studio/publish/app-signing#signing-manually).
+
+### Additional notes
+
+The app stores data files on the device in `/sdcard/Android/data/com.cleverraven/cataclysmdda/files`. The data is backwards compatible with the desktop version.
+
 # Mac OS X
 
-To build Cataclysm on Mac you'll need [Command Line Tools for Xcode](https://developer.apple.com/downloads/) and the [Homebrew](http://brew.sh) package manager. With Homebrew, you can easily install or build Cataclysm using the Cataclysm forumla on Homebrew Games.
+To build Cataclysm on Mac you'll need [Command Line Tools for Xcode](https://developer.apple.com/downloads/) and the [Homebrew](http://brew.sh) package manager. With Homebrew, you can easily install or build Cataclysm using the [Cataclysm](https://formulae.brew.sh/formula/cataclysm) forumla.
 
 ## Simple build using Homebrew
 
+Homebrew installation will come with tiles, sound and lua suooprt enabled by default.
+
 Once you have Homebrew installed, open Terminal and run one of the following commands.
-
-For a curses build:
-
-    brew install homebrew/games/cataclysm
 
 For a tiles build:
 
-    brew install homebrew/games/cataclysm --with-tiles
-
-For an experimental curses build:
-
-    brew install homebrew/games/cataclysm --HEAD
+    brew install cataclysm
 
 For an experimental tiles build:
 
-    brew install homebrew/games/cataclysm --with-tiles --HEAD
+    brew install cataclysm --HEAD
 
 Whichever build you choose, Homebrew will install the appropriate dependencies as needed. The installation will be in `/usr/local/Cellar/cataclysm` with a symlink named `cataclysm` in `/usr/local/bin`.
 
 To launch Cataclysm, just open Terminal and run `cataclysm`.
 
-To update an experimental build, you must uninstall Cataclysm, then reinstall using one of the above commands. If you want to keep your saved games, be sure to backup the folder `/usr/local/Cellar/cataclysm/HEAD/libexec/save` first, then uninstall Cataclysm using the command:
+To update an experimental build, you must uninstall Cataclysm, then reinstall using one of the above commands. Reinstall Cataclysm using the one of the following commands.
 
-    brew rm cataclysm
+For a tiles build:
+
+    brew reinstall cataclysm
+
+For an experimental tiles build:
+
+    brew reinstall cataclysm --HEAD
 
 ## Advanced info for Developers
 
@@ -344,22 +445,22 @@ For MacPorts:
     hash -r
 
 ### gcc
-    
+
 The version of gcc/g++ installed with the [Command Line Tools for Xcode](https://developer.apple.com/downloads/) is actually just a front end for the same Apple LLVM as clang.  This doesn't necessarily cause issues, but this version of gcc/g++ will have clang error messages and essentially produce the same results as if using clang. To compile with the "real" gcc/g++, install it with homebrew:
 
     brew install gcc
-    
+
 However, homebrew installs gcc as gcc-6 (where 6 is the version) to avoid conflicts. The simplest way to use the homebrew version at `/usr/local/bin/gcc-6` instead of the Apple LLVM version at `/usr/bin/gcc` is to symlink the necessary.
-    
+
     cd /usr/local/bin
     ln -s gcc-6 gcc
     ln -s g++-6 g++
     ln -s c++-6 c++
-    
-Or, to do this for everything in `/usr/local/bin/` ending with `-6`, 
+
+Or, to do this for everything in `/usr/local/bin/` ending with `-6`,
 
     find /usr/local/bin -name "*-6" -exec sh -c 'ln -s "$1" $(echo "$1" | sed "s/..$//")' _ {} \;
-    
+
 Also, you need to make sure that `/usr/local/bin` appears before `/usr/bin` in your `$PATH`, or else this will not work.
 
 Check that `gcc -v` shows the homebrew version you installed.
@@ -421,6 +522,12 @@ For SDL:
 
 For `app` builds, launch Cataclysm.app from Finder.
 
+### Test suite
+
+The build will also generate a test executable at tests/cata_test.
+Invoke it as you would any other executable and it will run the full suite of tests.
+Pass the ``--help`` flag to list options.
+
 ### dmg distribution
 
 You can build a nice dmg distribution file with the `dmgdist` target. You will need a tool called [dmgbuild](https://pypi.python.org/pypi/dmgbuild). To install this tool, you will need Python first. If you are on Mac OS X >= 10.8, Python 2.7 is pre-installed with the OS. If you are on an older version of OS X, you can download Python [on their official website](https://www.python.org/downloads/) or install it with homebrew `brew install python`. Once you have Python, you should be able to install `dmgbuild` by running:
@@ -457,15 +564,19 @@ Open Terminal's preferences, turn on "Use bright colors for bold text" in "Prefe
 
 ## Visual Studio Guide
 
-Visual Studio 2015 is required to build Cataclysm. We created solution and project files in directory `msvc-full-features`. Because of the complexity and how troublesome defining every combination of build feature options are, in Visual Studio project we added all build features, including tiles, sound, localization and lua.
+Visual Studio 2015 (or later) is required to build Cataclysm.  If you use a later version of Visual Studio, you will need to [enable the Visual Studio 2015 (v140) platform toolset](https://developercommunity.visualstudio.com/content/problem/48806/cant-find-v140-in-visual-studio-2017.html). We created solution and project files in directory `msvc-full-features`. Because of the complexity and how troublesome defining every combination of build feature options are, in Visual Studio project we added all build features, including tiles, sound, localization and lua.
 
 ### Dependencies
 
 We've prepared an archive containing all the headers and libraries required to build Cataclysm: [http://dev.narc.ro/cataclysm/WinDepend-MSVC.zip](http://dev.narc.ro/cataclysm/WinDepend-MSVC.zip) or [http://dev.narc.ro/cataclysm/WinDepend-MSVC.7z](http://dev.narc.ro/cataclysm/WinDepend-MSVC.7z). The latter is smaller, but if you don't have a 7-zip archive extracter, the former one is easier to deal with.
 
-Extract the 'WinDepend' folder and put it in the root folder of Cataclysm project.
+Extract the 'WinDepend' folder and put it in the root folder of Cataclysm project. Run the "copy_dll_to_bin" batch file and then move the dll files from the bin folder into the root folder the Cataclysm project.
 
-All the thing you need to do next is to install lua. Download x86 32-bit `lua.exe` from [http://lua-users.org/wiki/LuaBinaries](http://lua-users.org/wiki/LuaBinaries) and put it in `C:\Windows\System32` if you are using a 32-bit Windows, or `C:\Windows\SysWOW64` if you are using a 64-bit Windows.
+### Lua
+
+The next thing you need to do is to install lua. Download the appropriate x86 or x64 lua from [http://lua-users.org/wiki/LuaBinaries](http://lua-users.org/wiki/LuaBinaries) or [http://dev.narc.ro/cataclysm/WinDepend-lua.zip](http://dev.narc.ro/cataclysm/WinDepend-lua.zip), and extract it to `C:\Windows\System32` or somewhere else on your path.
+
+Once you have it installed, go to the project directory, then go to `src/lua`, and run `lua53 generate_bindings.lua catabindings.cpp`. This will generate the `catabindings.cpp` file which is necessary for compilation.
 
 ### Building
 
@@ -497,25 +608,25 @@ If we want to compile with localization, we will need gettext and libintl. In "A
 If we want to compile with Tiles (SDL) we have to download a few libraries.
 * `SDL2` http://www.libsdl.org/download-2.0.php chose `SDL2-devel-2.0.X-mingw.tar.gz`.
 * `SDL_ttf` https://www.libsdl.org/projects/SDL_ttf/ chose `SDL2_ttf-devel-2.0.12-mingw.tar.gz`.
-* `SDL_image` https://www.libsdl.org/projects/SDL_image/ chose ` SDL2_image-devel-2.0.0-mingw.tar.gz` 
-* `freetype` http://gnuwin32.sourceforge.net/packages/freetype.htm chose `Binaries` and `Developer files`  
+* `SDL_image` https://www.libsdl.org/projects/SDL_image/ chose ` SDL2_image-devel-2.0.0-mingw.tar.gz`
+* `freetype` http://gnuwin32.sourceforge.net/packages/freetype.htm chose `Binaries` and `Developer files`
 
 #### Bundled Libraries
-The following archives were pre-bundled for convienience and reduction of head-aches, simply download and extract directly to the root directory of the CDDA source:
+The following archives were pre-bundled for convenience and reduction of head-aches, simply download and extract directly to the root directory of the CDDA source:
 * `64-bit SDL \ Tiles \ Sound \ Lua \ Localization` http://dev.narc.ro/cataclysm/cdda-win64-codeblocks.7z
 
 #### Installing Tiles(SDL) libraries.
-For the first 3 (`SDL2`, `SDL_ttf` and `SDL_image`) you want to extract the include and lib folders from the `i686-w64-mingw32` folders into your MinGW installtion folder. (Reccomended `C:\MinGW`). And the `SDL2_image.dll` and `SDL2_ttf.dll` into your cataclysm root folder.
+For the first 3 (`SDL2`, `SDL_ttf` and `SDL_image`) you want to extract the include and lib folders from the `i686-w64-mingw32` folders into your MinGW installation folder. (Recommended `C:\MinGW`). And the `SDL2_image.dll` and `SDL2_ttf.dll` into your cataclysm root folder.
 
 For freetype you want to grab the include and lib folders from the `freetype-2.X.X-X-lib.zip` and move them into your your MinGW installation folder. Then you want to get the freetype6.dll from the `freetype-2.X.X-X-bin.zip` and move it into your cataclysm root folder.
 
 #### ISSUE - "winapifamily.h" no such file or directoyr
-There seems to be at the moment of writing that a file in SDL is broken and needs to be replaced. 
-https://hg.libsdl.org/SDL/raw-file/e217ed463f25/include/SDL_platform.h 
+There seems to be at the moment of writing that a file in SDL is broken and needs to be replaced.
+https://hg.libsdl.org/SDL/raw-file/e217ed463f25/include/SDL_platform.h
 Replace SDL_platform.h in the MinGW/include/SDL2 folder and it should be fine.
 
 ### Makefile changes
-This probably not the best way to do it. But it seems that you need to remove a few dependenceis from the makefile or it will not build.
+This probably not the best way to do it. But it seems that you need to remove a few dependencies from the makefile or it will not build.
 change the line `LDFLAGS += -lfreetype -lpng -lz -ljpeg -lbz2` to `LDFLAGS += -lfreetype`
 
 ### Compiling
@@ -553,7 +664,7 @@ Note: You may need to bash the close button repeatedly. Or use the task manager 
 
 #### 4. Open an editor that preserves line-endings
 
-Note: Wordpad should do. Or Notepadd++.
+Note: Wordpad should do. Or Notepad++.
 
 #### 5. Open `C:\msys64\etc\pacman.conf` and change:
 

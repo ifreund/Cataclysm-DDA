@@ -2,25 +2,25 @@
 #ifndef MONGROUP_H
 #define MONGROUP_H
 
-#include <vector>
+#include "calendar.h"
+#include "enums.h"
+#include "monster.h"
+#include "string_id.h"
+
 #include <map>
 #include <set>
-#include <string>
-#include "enums.h"
-#include "json.h"
-#include "string_id.h"
-#include "monster.h"
+#include <vector>
 
 // from overmap.h
 class overmap;
-
+class JsonObject;
+class JsonIn;
+class JsonOut;
 struct MonsterGroup;
 using mongroup_id = string_id<MonsterGroup>;
-extern template const string_id<MonsterGroup> string_id<MonsterGroup>::NULL_ID;
 
 struct mtype;
 using mtype_id = string_id<mtype>;
-extern template const string_id<mtype> string_id<mtype>::NULL_ID;
 
 struct MonsterGroupEntry;
 typedef std::vector<MonsterGroupEntry> FreqDef;
@@ -38,15 +38,14 @@ struct MonsterGroupEntry {
     int pack_minimum;
     int pack_maximum;
     std::vector<std::string> conditions;
-    int starts;
-    int ends;
+    time_duration starts;
+    time_duration ends;
     bool lasts_forever() const {
         return ( ends <= 0 );
     }
 
     MonsterGroupEntry( const mtype_id &id, int new_freq, int new_cost,
-                       int new_pack_min, int new_pack_max, int new_starts,
-                       int new_ends )
+                       int new_pack_min, int new_pack_max, const time_duration &new_starts, const time_duration &new_ends )
         : name( id )
         , frequency( new_freq )
         , cost_multiplier( new_cost )
@@ -61,7 +60,7 @@ struct MonsterGroupResult {
     mtype_id name;
     int pack_size;
 
-    MonsterGroupResult() : name( mtype_id::NULL_ID ), pack_size( 0 ) {
+    MonsterGroupResult() : name( mtype_id::NULL_ID() ), pack_size( 0 ) {
     }
 
     MonsterGroupResult( const mtype_id &id, int new_pack_size )
@@ -78,11 +77,12 @@ struct MonsterGroup {
     // time when exploring an unexplored portion of the map
     bool replace_monster_group;
     mongroup_id new_monster_group;
-    int monster_group_time;  //time in days
+    time_duration monster_group_time = 0;
     bool is_safe; /// Used for @ref mongroup::is_safe()
+    int freq_total; // Default 1000 unless specified - max number to roll for spawns
 };
 
-struct mongroup : public JsonSerializer, public JsonDeserializer {
+struct mongroup {
     mongroup_id type;
     // Note: position is not saved as such in the json
     // Instead, a vector of positions is saved for
@@ -105,7 +105,7 @@ struct mongroup : public JsonSerializer, public JsonDeserializer {
      *  And "roam", who roam around the map randomly, not taking care to return
      *  anywhere.
      */
-    std::string horde_behaviour = "";
+    std::string horde_behaviour;
     bool diffuse = false;   // group size ind. of dist. from center and radius invariant
     mongroup( const mongroup_id &ptype, int pposx, int pposy, int pposz,
               unsigned int prad, unsigned int ppop )
@@ -113,17 +113,13 @@ struct mongroup : public JsonSerializer, public JsonDeserializer {
         , pos( pposx, pposy, pposz )
         , radius( prad )
         , population( ppop )
-        , target()
-        , interest( 0 )
-        , dying( false )
-        , horde( false )
-        , diffuse( false ) {
+        , target() {
     }
     mongroup( std::string ptype, tripoint ppos, unsigned int prad, unsigned int ppop,
               tripoint ptarget, int pint, bool pdie, bool phorde, bool pdiff ) :
         type( ptype ), pos( ppos ), radius( prad ), population( ppop ), target( ptarget ),
         interest( pint ), dying( pdie ), horde( phorde ), diffuse( pdiff ) { }
-    mongroup() { }
+    mongroup() = default;
     bool is_safe() const;
     bool empty() const;
     void clear();
@@ -153,17 +149,15 @@ struct mongroup : public JsonSerializer, public JsonDeserializer {
         }
         interest = set;
     }
+    float avg_speed() const;
 
     template<typename Archive>
     void io( Archive & );
     using archive_type_tag = io::object_archive_tag;
 
-    using JsonDeserializer::deserialize;
-    void deserialize( JsonIn &jsin ) override;
+    void deserialize( JsonIn &jsin );
     void deserialize_legacy( JsonIn &jsin );
-
-    using JsonSerializer::serialize;
-    void serialize( JsonOut &jsout ) const override;
+    void serialize( JsonOut &jsout ) const;
 };
 
 class MonsterGroupManager
@@ -173,14 +167,18 @@ class MonsterGroupManager
         static void LoadMonsterBlacklist( JsonObject &jo );
         static void LoadMonsterWhitelist( JsonObject &jo );
         static void FinalizeMonsterGroups();
-        static MonsterGroupResult GetResultFromGroup( const mongroup_id &group,
-                int *quantity = 0, int turn = -1 );
+        static MonsterGroupResult GetResultFromGroup( const mongroup_id &group, int *quantity = 0 );
         static bool IsMonsterInGroup( const mongroup_id &group, const mtype_id &id );
         static bool isValidMonsterGroup( const mongroup_id &group );
         static const mongroup_id &Monster2Group( const mtype_id &id );
         static std::vector<mtype_id> GetMonstersFromGroup( const mongroup_id &group );
         static const MonsterGroup &GetMonsterGroup( const mongroup_id &group );
         static const MonsterGroup &GetUpgradedMonsterGroup( const mongroup_id &group );
+        /**
+         * Gets a random monster, weighted by frequency.
+         * Ignores cost multiplier.
+         */
+        static const mtype_id &GetRandomMonsterFromGroup( const mongroup_id &group );
 
         static void check_group_definitions();
 

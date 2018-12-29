@@ -1,16 +1,20 @@
 #include "vehicle.h"
 
 #include "game.h"
-#include "player.h"
+#include "gun_mode.h"
 #include "item.h"
 #include "itype.h"
-#include "veh_type.h"
-#include "vehicle_selector.h"
-#include "npc.h"
-#include "projectile.h"
 #include "messages.h"
+#include "npc.h"
+#include "output.h"
+#include "player.h"
+#include "projectile.h"
+#include "ranged.h"
+#include "string_formatter.h"
 #include "translations.h"
 #include "ui.h"
+#include "veh_type.h"
+#include "vehicle_selector.h"
 
 #include <algorithm>
 #include <numeric>
@@ -56,7 +60,7 @@ const turret_data vehicle::turret_query( const vehicle_part &pt ) const
 
 turret_data vehicle::turret_query( const tripoint &pos )
 {
-    auto res = get_parts( pos, "TURRET" );
+    auto res = get_parts_at( pos, "TURRET", part_status_flag::any );
     return !res.empty() ? turret_query( *res.front() ) : turret_data();
 }
 
@@ -109,7 +113,6 @@ const itype *turret_data::ammo_data() const
     }
     return part->base.ammo_data();
 }
-
 
 itype_id turret_data::ammo_current() const
 {
@@ -234,7 +237,7 @@ turret_data::status turret_data::query() const
 void turret_data::prepare_fire( player &p )
 {
     // prevent turrets from shooting their own vehicles
-    p.add_effect( effect_on_roof, 1 );
+    p.add_effect( effect_on_roof, 1_turns );
 
     // turrets are subject only to recoil_vehicle()
     cached_recoil = p.recoil;
@@ -296,9 +299,8 @@ void vehicle::turrets_set_targeting()
 
     int sel = 0;
     while( true ) {
-        uimenu menu;
+        uilist menu;
         menu.text = _( "Set turret targeting" );
-        menu.return_invalid = true;
         menu.callback = &callback;
         menu.selected = sel;
         menu.fselected = sel;
@@ -310,7 +312,7 @@ void vehicle::turrets_set_targeting()
         }
 
         menu.query();
-        if( menu.ret < 0 || menu.ret >= static_cast<int>( turrets.size() ) ) {
+        if( menu.ret < 0 || static_cast<size_t>( menu.ret ) >= turrets.size() ) {
             break;
         }
 
@@ -339,9 +341,8 @@ void vehicle::turrets_set_mode()
 
     int sel = 0;
     while( true ) {
-        uimenu menu;
+        uilist menu;
         menu.text = _( "Set turret firing modes" );
-        menu.return_invalid = true;
         menu.callback = &callback;
         menu.selected = sel;
         menu.fselected = sel;
@@ -349,11 +350,11 @@ void vehicle::turrets_set_mode()
 
         for( auto &p : turrets ) {
             menu.addentry( -1, true, MENU_AUTOASSIGN, "%s [%s]",
-                           p->name().c_str(), p->base.gun_current_mode().mode.c_str() );
+                           p->name().c_str(), p->base.gun_current_mode().name() );
         }
 
         menu.query();
-        if( menu.ret < 0 || menu.ret >= static_cast<int>( turrets.size() ) ) {
+        if( menu.ret < 0 || static_cast<size_t>( menu.ret ) >= turrets.size() ) {
             break;
         }
 
@@ -403,9 +404,8 @@ bool vehicle::turrets_aim( bool manual, bool automatic, vehicle_part *tur_part )
         return std::max( lhs, res );
     } );
 
-    tripoint pos = g->u.pos();
-    std::vector<tripoint> trajectory;
-    trajectory = target_handler().target_ui( g->u, TARGET_MODE_TURRET, nullptr, range );
+    std::vector<tripoint> trajectory = target_handler().target_ui( g->u, TARGET_MODE_TURRET, nullptr,
+                                       range );
 
     bool got_target = !trajectory.empty();
     if( got_target ) {
@@ -437,7 +437,7 @@ int vehicle::turrets_aim_and_fire( bool manual, bool automatic, vehicle_part *tu
 
     if( turrets_aim( manual, automatic, tur_part ) ) {
         // turrets_aim already set the targets for any available turrets that can reach the target.
-        auto const &turs = turrets();
+        const auto &turs = turrets();
         std::for_each( turs.begin(), turs.end(), fire_if_able );
     }
 
@@ -451,8 +451,8 @@ int vehicle::turrets_aim_single( vehicle_part *tur_part )
         return turrets_aim_and_fire( false, false, tur_part );
     }
 
-    std::vector<std::string> options( 1, _( "Cancel" ) );
-    std::vector<vehicle_part *> guns( 1, nullptr );
+    std::vector<std::string> options;
+    std::vector<vehicle_part *> guns;
 
     // Get a group of turrets that are ready to fire
     for( auto &t : turrets() ) {
@@ -467,8 +467,13 @@ int vehicle::turrets_aim_single( vehicle_part *tur_part )
 
     vehicle_part *chosen;
 
-    if( options.size() > 1 ) {
-        chosen = guns[( uimenu( false, _( "Aim which turret?" ), options ) ) - 1 ];
+    if( !options.empty() ) {
+        const int ret = uilist( _( "Aim which turret?" ), options );
+        if( ret >= 0 ) {
+            chosen = guns[ret];
+        } else {
+            chosen = nullptr;
+        }
     } else {
         add_msg( m_warning, _( "None of the turrets are available to fire." ) );
         return shots;
@@ -490,26 +495,29 @@ npc vehicle::get_targeting_npc( vehicle_part &pt )
     cpu.name = string_format( pgettext( "vehicle turret", "The %s" ), pt.name().c_str() );
     // turrets are subject only to recoil_vehicle()
     cpu.recoil = 0;
+
     // These might all be affected by vehicle part damage, weather effects, etc.
-    cpu.set_skill_level( turret_query( pt ).base()->gun_skill(), 8 );
+    cpu.set_skill_level( pt.get_base().gun_skill(), 8 );
     cpu.set_skill_level( skill_id( "gun" ), 4 );
+
     cpu.str_cur = 16;
     cpu.dex_cur = 8;
     cpu.per_cur = 12;
     cpu.setpos( global_part_pos3( pt ) );
     // Assume vehicle turrets are friendly to the player.
-    cpu.attitude = NPCATT_FOLLOW;
+    cpu.set_attitude( NPCATT_FOLLOW );
     return cpu;
 }
 
 int vehicle::automatic_fire_turret( vehicle_part &pt )
 {
     turret_data gun = turret_query( pt );
-    if( gun.query() != turret_data::status::ready ) {
-        return 0;
-    }
 
     int shots = 0;
+
+    if( gun.query() != turret_data::status::ready ) {
+        return shots;
+    }
 
     // The position of the vehicle part.
     tripoint pos = global_part_pos3( pt );
@@ -523,8 +531,6 @@ int vehicle::automatic_fire_turret( vehicle_part &pt )
         area += area == 1 ? 1 : 2;
     }
 
-    // The position on which we are firing
-    tripoint targ = pos;
     const bool u_see = g->u.sees( pos );
     // The current target of the turret.
     auto &target = pt.target;
@@ -535,16 +541,23 @@ int vehicle::automatic_fire_turret( vehicle_part &pt )
         pt.reset_target( pos );
         int boo_hoo;
 
-        // @todo calculate chance to hit and cap range based upon this
-        int max_range = 12;
+        // @todo: calculate chance to hit and cap range based upon this
+        int max_range = 20;
         int range = std::min( gun.range(), max_range );
         Creature *auto_target = cpu.auto_find_hostile_target( range, boo_hoo, area );
         if( auto_target == nullptr ) {
-            if( u_see && boo_hoo ) {
-                add_msg( m_warning, ngettext( "%s points in your direction and emits an IFF warning beep.",
-                                              "%s points in your direction and emits %d annoyed sounding beeps.",
-                                              boo_hoo ),
-                         cpu.name.c_str(), boo_hoo );
+            if( boo_hoo ) {
+                if( u_see ) {
+                    add_msg( m_warning, ngettext( "%s points in your direction and emits an IFF warning beep.",
+                                                  "%s points in your direction and emits %d annoyed sounding beeps.",
+                                                  boo_hoo ),
+                             cpu.name.c_str(), boo_hoo );
+                } else {
+                    add_msg( m_warning, ngettext( "%s emits an IFF warning beep.",
+                                                  "%s emits %d annoyed sounding beeps.",
+                                                  boo_hoo ),
+                             cpu.name.c_str(), boo_hoo );
+                }
             }
             return shots;
         }
@@ -561,7 +574,7 @@ int vehicle::automatic_fire_turret( vehicle_part &pt )
     }
 
     // Get the turret's target and reset it
-    targ = target.second;
+    tripoint targ = target.second;
     pt.reset_target( pos );
 
     shots = gun.fire( cpu, targ );

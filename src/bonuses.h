@@ -7,11 +7,11 @@
 
 enum damage_type : int;
 
-    class Character;
-    class JsonObject;
-    class JsonArray;
+class Character;
+class JsonObject;
+class JsonArray;
 
-    enum scaling_stat : int {
+enum scaling_stat : int {
     STAT_NULL = 0,
     STAT_STR,
     STAT_DEX,
@@ -77,6 +77,8 @@ class bonus_container
 
         float get_mult( const Character &u, affected_stat stat, damage_type type ) const;
         float get_mult( const Character &u, affected_stat stat ) const;
+
+        std::string get_description() const;
 
     private:
         using bonus_map = std::map<affected_type, std::vector<effect_scaling>>;

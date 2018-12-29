@@ -11,7 +11,7 @@ void MAP_SHARING::setSharing( bool mode )
 {
     MAP_SHARING::sharing = mode;
 }
-void MAP_SHARING::setUsername( std::string name )
+void MAP_SHARING::setUsername( const std::string &name )
 {
     MAP_SHARING::username = name;
 }
@@ -45,18 +45,15 @@ bool MAP_SHARING::isWorldmenu()
 
 bool MAP_SHARING::isAdmin()
 {
-    if( admins.find( getUsername() ) != admins.end() ) {
-        return true;
-    }
-    return false;
+    return admins.find( getUsername() ) != admins.end();
 }
 
-void MAP_SHARING::setAdmins( std::set<std::string> names )
+void MAP_SHARING::setAdmins( const std::set<std::string> &names )
 {
     MAP_SHARING::admins = names;
 }
 
-void MAP_SHARING::addAdmin( std::string name )
+void MAP_SHARING::addAdmin( const std::string &name )
 {
     MAP_SHARING::admins.insert( name );
     MAP_SHARING::debuggers.insert( name );
@@ -64,18 +61,15 @@ void MAP_SHARING::addAdmin( std::string name )
 
 bool MAP_SHARING::isDebugger()
 {
-    if( debuggers.find( getUsername() ) != debuggers.end() ) {
-        return true;
-    }
-    return false;
+    return debuggers.find( getUsername() ) != debuggers.end();
 }
 
-void MAP_SHARING::setDebuggers( std::set<std::string> names )
+void MAP_SHARING::setDebuggers( const std::set<std::string> &names )
 {
     MAP_SHARING::debuggers = names;
 }
 
-void MAP_SHARING::addDebugger( std::string name )
+void MAP_SHARING::addDebugger( const std::string &name )
 {
     MAP_SHARING::debuggers.insert( name );
 }
@@ -92,21 +86,21 @@ void MAP_SHARING::setDefaults()
     MAP_SHARING::addAdmin( "admin" );
 }
 
-#ifndef __linux__ // make non-linux operating systems happy
+#ifndef __linux__ // make non-Linux operating systems happy
 
-int getLock( char const * )
+int getLock( const char * )
 {
     return 0;
 }
 
-void releaseLock( int, char const * )
+void releaseLock( int, const char * )
 {
     // Nothing to do.
 }
 
 #else
 
-int getLock( char const *lockName )
+int getLock( const char *lockName )
 {
     mode_t m = umask( 0 );
     int fd = open( lockName, O_RDWR | O_CREAT, 0666 );
@@ -118,7 +112,7 @@ int getLock( char const *lockName )
     return fd;
 }
 
-void releaseLock( int fd, char const *lockName )
+void releaseLock( int fd, const char *lockName )
 {
     if( fd < 0 ) {
         return;
@@ -140,16 +134,6 @@ void fopen_exclusive( std::ofstream &fout, const char *filename,
         fout.open( filename, mode );
     }
 }
-/*
-std::ofstream fopen_exclusive(const char* filename) {
-    std::string lockfile = std::string(filename)+".lock";
-    std::ofstream fout;
-    lockFiles[lockfile] = getLock(lockfile);
-    if(lockFiles[lockfile] != -1) {
-        fout.open(filename, std::fstream::ios_base::out);
-    }
-    return fout;
-} */
 
 void fclose_exclusive( std::ofstream &fout, const char *filename )
 {

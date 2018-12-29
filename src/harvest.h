@@ -2,28 +2,29 @@
 #ifndef HARVEST_H
 #define HARVEST_H
 
+#include "string_id.h"
+
 #include <list>
 #include <map>
 #include <set>
-
-#include "string_id.h"
 
 typedef std::string itype_id;
 class JsonObject;
 class harvest_list;
 
 using harvest_id = string_id<harvest_list>;
-extern template const string_id<harvest_list> string_id<harvest_list>::NULL_ID;
 
 // Could be reused for butchery
 struct harvest_entry {
     itype_id drop = "null";
     std::pair<float, float> base_num = { 1.0f, 1.0f };
     // This is multiplied by survival and added to the above
-    // @todo Make it a map: skill->scaling
+    // @todo: Make it a map: skill->scaling
     std::pair<float, float> scale_num = { 0.0f, 0.0f };
 
     int max = 1000;
+    std::string type = "null";
+    float mass_ratio = 0.00f;
 
     static harvest_entry load( JsonObject &jo, const std::string &src );
 };
@@ -34,6 +35,8 @@ class harvest_list
         harvest_list();
 
         const harvest_id &id() const;
+
+        std::string message() const;
 
         bool is_null() const;
 
@@ -79,6 +82,7 @@ class harvest_list
         harvest_id id_;
         std::list<harvest_entry> entries_;
         std::set<std::string> names_;
+        std::string message_;
 
         void finalize();
 };

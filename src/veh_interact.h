@@ -2,19 +2,17 @@
 #ifndef VEH_INTERACT_H
 #define VEH_INTERACT_H
 
-#include "inventory.h"
-#include "input.h"
 #include "color.h"
-#include "cursesdef.h" // WINDOW
-#include "string_id.h"
-#include "int_id.h"
-#include "requirements.h"
+#include "cursesdef.h"
+#include "input.h"
+#include "inventory.h"
 #include "player_activity.h"
+#include "requirements.h"
+#include "string_id.h"
 
-#include <string>
-#include <vector>
 #include <map>
 #include <sstream>
+#include <vector>
 
 class vpart_info;
 using vpart_id = string_id<vpart_info>;
@@ -55,6 +53,13 @@ class veh_interact
 
         int ddx = 0;
         int ddy = 0;
+        /* starting offset for vehicle parts description display and max offset for scrolling */
+        int start_at = 0;
+        int start_limit = 0;
+        /* starting offset for the overview and the max offset for scrolling */
+        int overview_offset = 0;
+        int overview_limit = 0;
+
         const vpart_info *sel_vpart_info = nullptr;
         char sel_cmd = ' '; //Command currently being run by the player
 
@@ -63,15 +68,15 @@ class veh_interact
         int cpart = -1;
         int page_size;
         int fuel_index = 0; /** Starting index of where to start printing fuels from */
-        WINDOW *w_grid;
-        WINDOW *w_mode;
-        WINDOW *w_msg;
-        WINDOW *w_disp;
-        WINDOW *w_parts;
-        WINDOW *w_stats;
-        WINDOW *w_list;
-        WINDOW *w_details;
-        WINDOW *w_name;
+        catacurses::window w_grid;
+        catacurses::window w_mode;
+        catacurses::window w_msg;
+        catacurses::window w_disp;
+        catacurses::window w_parts;
+        catacurses::window w_stats;
+        catacurses::window w_list;
+        catacurses::window w_details;
+        catacurses::window w_name;
 
         vehicle *veh;
         bool has_wrench;
@@ -85,14 +90,14 @@ class veh_interact
 
         player_activity serialize_activity();
 
-        void set_title( std::string msg, ... ) const;
+        void set_title( const std::string &msg ) const;
 
         /** Format list of requirements returning true if all are met */
         bool format_reqs( std::ostringstream &msg, const requirement_data &reqs,
                           const std::map<skill_id, int> &skills, int moves ) const;
 
         int part_at( int dx, int dy );
-        void move_cursor( int dx, int dy );
+        void move_cursor( int dx, int dy, int dstart_at = 0 );
         task_reason cant_do( char mode );
         bool can_potentially_install( const vpart_info &vpart );
         /** Move index (parameter pos) according to input action:
@@ -123,6 +128,7 @@ class veh_interact
         bool do_remove( std::string &msg );
         bool do_rename( std::string &msg );
         bool do_siphon( std::string &msg );
+        bool do_unload( std::string &msg );
         bool do_tirechange( std::string &msg );
         bool do_assign_crew( std::string &msg );
         bool do_relabel( std::string &msg );
@@ -133,18 +139,22 @@ class veh_interact
         void display_stats();
         void display_name();
         void display_mode();
-        void display_list( size_t pos, std::vector<const vpart_info *> list, const int header = 0 );
+        void display_list( size_t pos, const std::vector<const vpart_info *> &list, const int header = 0 );
         void display_details( const vpart_info *part );
-        size_t display_esc( WINDOW *w );
+        size_t display_esc( const catacurses::window &w );
 
         /**
-         * Display overview of parts
-         * @param enable used to determine if a part can be selected
-         * @param action callback when part is selected, should return true if redraw required
+         * Display overview of parts, optionally with interactive selection of one part
+         *
+         * @param enable used to determine parts of interest. If \p action also present, these
+                         parts are the ones that can be selected. Otherwise, these are the parts
+                         that will be highlighted
+         * @param action callback when part is selected, should return true if redraw required.
          * @return whether redraw is required (always false if no action was run)
          */
         bool overview( std::function<bool( const vehicle_part &pt )> enable = {},
                        std::function<bool( vehicle_part &pt )> action = {} );
+        void move_overview_line( int );
 
         void countDurability();
 
@@ -199,7 +209,11 @@ class veh_interact
         void cache_tool_availability();
         void allocate_windows();
         void do_main_loop();
-        void deallocate_windows();
+
+        void cache_tool_availability_update_lifting( const tripoint &world_cursor_pos );
+
+        /** Returns true if the vehicle has a jack powerful enough to lift itself installed */
+        bool can_self_jack();
 };
 
 #endif

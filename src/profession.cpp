@@ -1,20 +1,19 @@
-#include <iostream>
-#include <sstream>
-#include <iterator>
-
 #include "profession.h"
 
+#include "addiction.h"
 #include "debug.h"
+#include "generic_factory.h"
+#include "item_group.h"
+#include "itype.h"
 #include "json.h"
 #include "player.h"
-#include "bionics.h"
-#include "text_snippets.h"
-#include "rng.h"
-#include "translations.h"
-#include "addiction.h"
 #include "pldata.h"
-#include "itype.h"
-#include "generic_factory.h"
+#include "text_snippets.h"
+#include "translations.h"
+
+#include <cmath>
+#include <iterator>
+#include <map>
 
 namespace
 {
@@ -68,7 +67,7 @@ bool string_id<profession>::is_valid() const
 }
 
 profession::profession()
-    : id(), _name_male( "null" ), _name_female( "null" ),
+    : _name_male( "null" ), _name_female( "null" ),
       _description_male( "null" ), _description_female( "null" ), _point_cost( 0 )
 {
 }
@@ -188,7 +187,7 @@ void profession::load( JsonObject &jo, const std::string & )
     optional( jo, was_loaded, "skills", _starting_skills, skilllevel_reader {} );
     optional( jo, was_loaded, "addictions", _starting_addictions, addiction_reader {} );
     // TODO: use string_id<bionic_type> or so
-    optional( jo, was_loaded, "CBMs", _starting_CBMs, auto_flags_reader<> {} );
+    optional( jo, was_loaded, "CBMs", _starting_CBMs, auto_flags_reader<bionic_id> {} );
     // TODO: use string_id<mutation_branch> or so
     optional( jo, was_loaded, "traits", _starting_traits, auto_flags_reader<trait_id> {} );
     optional( jo, was_loaded, "flags", flags, auto_flags_reader<> {} );
@@ -222,7 +221,7 @@ void profession::check_item_definitions( const itypedecvec &items ) const
 {
     for( auto &itd : items ) {
         if( !item::type_is_defined( itd.type_id ) ) {
-            debugmsg( "profession %s: item %s does not exist", id.c_str() , itd.type_id.c_str() );
+            debugmsg( "profession %s: item %s does not exist", id.c_str(), itd.type_id.c_str() );
         } else if( !itd.snippet_id.empty() ) {
             const itype *type = item::find_type( itd.type_id );
             if( type->snippet_category.empty() ) {
@@ -258,8 +257,8 @@ void profession::check_definition() const
         debugmsg( "_starting_items_female group is undefined" );
     }
 
-    for( auto const &a : _starting_CBMs ) {
-        if( !is_valid_bionic( a ) ) {
+    for( const auto &a : _starting_CBMs ) {
+        if( !a.is_valid() ) {
             debugmsg( "bionic %s for profession %s does not exist", a.c_str(), id.c_str() );
         }
     }
@@ -385,7 +384,7 @@ std::vector<addiction> profession::addictions() const
     return _starting_addictions;
 }
 
-std::vector<std::string> profession::CBMs() const
+std::vector<bionic_id> profession::CBMs() const
 {
     return _starting_CBMs;
 }
@@ -400,18 +399,14 @@ const profession::StartingSkillList profession::skills() const
     return _starting_skills;
 }
 
-bool profession::has_flag( std::string flag ) const
+bool profession::has_flag( const std::string &flag ) const
 {
     return flags.count( flag ) != 0;
 }
 
-bool profession::can_pick( player *u, int points ) const
+bool profession::can_pick( const player &u, const int points ) const
 {
-    if( point_cost() - u->prof->point_cost() > points ) {
-        return false;
-    }
-
-    return true;
+    return point_cost() - u.prof->point_cost() <= points;
 }
 
 bool profession::is_locked_trait( const trait_id &trait ) const
@@ -581,10 +576,10 @@ std::vector<item> json_item_substitution::get_substitution( const item &it,
         return ret;
     }
 
-    const long old_amt = it.count_by_charges() ? it.charges : 1l;
+    const long old_amt = it.count();
     for( const substitution::info &inf : sub->infos ) {
         item result( inf.new_item );
-        const long new_amt = std::max( 1l, ( long )std::round( inf.ratio * old_amt ) );
+        const long new_amt = std::max( 1l, static_cast<long>( std::round( inf.ratio * old_amt ) ) );
 
         if( !result.count_by_charges() ) {
             for( long i = 0; i < new_amt; i++ ) {

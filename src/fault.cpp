@@ -1,8 +1,9 @@
 #include "fault.h"
 
 #include "debug.h"
-#include "translations.h"
+#include "json.h"
 #include "requirements.h"
+#include "translations.h"
 
 static std::map<fault_id, fault> faults_all;
 
@@ -39,7 +40,7 @@ void fault::load_fault( JsonObject &jo )
     auto sk = jo.get_array( "skills" );
     while( sk.has_more() ) {
         auto cur = sk.next_array();
-        f.skills_.emplace( skill_id( cur.get_string( 0 ) ) , cur.size() >= 2 ? cur.get_int( 1 ) : 1 );
+        f.skills_.emplace( skill_id( cur.get_string( 0 ) ), cur.size() >= 2 ? cur.get_int( 1 ) : 1 );
     }
 
     if( jo.has_string( "requirements" ) ) {
@@ -47,16 +48,15 @@ void fault::load_fault( JsonObject &jo )
 
     } else {
         auto req = jo.get_object( "requirements" );
-        auto req_id = std::string( "inline_fault_" ) += f.id_.str();
+        const requirement_id req_id( std::string( "inline_fault_" ) + f.id_.str() );
         requirement_data::load_requirement( req, req_id );
-        f.requirements_ = requirement_id( req_id );
+        f.requirements_ = req_id;
     }
 
     if( faults_all.find( f.id_ ) != faults_all.end() ) {
         jo.throw_error( "parsed fault overwrites existing definition", "id" );
     } else {
         faults_all[ f.id_ ] = f;
-        DebugLog( D_INFO, DC_ALL ) << "Loaded fault: " << f.name_;
     }
 }
 

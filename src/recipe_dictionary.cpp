@@ -1,22 +1,24 @@
 #include "recipe_dictionary.h"
 
-#include "itype.h"
-#include "generic_factory.h"
-#include "item_factory.h"
-#include "init.h"
 #include "cata_utility.h"
 #include "crafting.h"
+#include "generic_factory.h"
+#include "init.h"
+#include "item.h"
+#include "item_factory.h"
+#include "itype.h"
+#include "output.h"
 #include "skill.h"
+#include "uistate.h"
 
 #include <algorithm>
-#include <numeric>
 
 recipe_dictionary recipe_dict;
 
 namespace
 {
 
-void delete_if( std::map<std::string, recipe> &data,
+void delete_if( std::map<recipe_id, recipe> &data,
                 const std::function<bool( const recipe & )> &pred )
 {
     for( auto it = data.begin(); it != data.end(); ) {
@@ -35,15 +37,31 @@ static std::set<const recipe *> null_match;
 
 static DynamicDataLoader::deferred_json deferred;
 
-const recipe &recipe_dictionary::operator[]( const std::string &id ) const
+template<>
+const recipe &string_id<recipe>::obj() const
 {
-    auto iter = recipes.find( id );
-    return iter != recipes.end() ? iter->second : null_recipe;
+    const auto iter = recipe_dict.recipes.find( *this );
+    if( iter != recipe_dict.recipes.end() ) {
+        if( iter->second.obsolete ) {
+            return null_recipe;
+        }
+        return iter->second;
+    }
+    if( *this != NULL_ID() ) {
+        debugmsg( "invalid recipe id \"%s\"", c_str() );
+    }
+    return null_recipe;
+}
+
+template<>
+bool string_id<recipe>::is_valid() const
+{
+    return recipe_dict.recipes.find( *this ) != recipe_dict.recipes.end();
 }
 
 const recipe &recipe_dictionary::get_uncraft( const itype_id &id )
 {
-    auto iter = recipe_dict.uncraft.find( id );
+    auto iter = recipe_dict.uncraft.find( recipe_id( id ) );
     return iter != recipe_dict.uncraft.end() ? iter->second : null_recipe;
 }
 
@@ -70,18 +88,58 @@ bool search_reqs( std::vector<std::vector<item_comp> >  gp,
     } );
 }
 
+std::vector<const recipe *> recipe_subset::favorite() const
+{
+    std::vector<const recipe *> res;
+
+    std::copy_if( recipes.begin(), recipes.end(), std::back_inserter( res ), [&]( const recipe * r ) {
+        if( !*r ) {
+            return false;
+        }
+        return uistate.favorite_recipes.find( r->ident() ) != uistate.favorite_recipes.end();
+    } );
+
+    return res;
+}
+
+std::vector<const recipe *> recipe_subset::recent() const
+{
+    std::vector<const recipe *> res;
+
+    for( auto rec_id = uistate.recent_recipes.rbegin(); rec_id != uistate.recent_recipes.rend();
+         ++rec_id ) {
+        std::find_if( recipes.begin(), recipes.end(), [&rec_id, &res]( const recipe * r ) {
+            if( !*r || *rec_id != r->ident() ) {
+                return false;
+            }
+
+            res.push_back( r );
+            return true;
+        } );
+    }
+
+    return res;
+}
+
 std::vector<const recipe *> recipe_subset::search( const std::string &txt,
         const search_type key ) const
 {
     std::vector<const recipe *> res;
 
     std::copy_if( recipes.begin(), recipes.end(), std::back_inserter( res ), [&]( const recipe * r ) {
+        if( !*r ) {
+            return false;
+        }
         switch( key ) {
             case search_type::name:
-                return lcmatch( item::nname( r->result ), txt );
+                return lcmatch( r->result_name(), txt );
 
             case search_type::skill:
-                return lcmatch( r->required_skills_string(), txt ) || lcmatch( r->skill_used->name(), txt );
+                return lcmatch( r->required_skills_string( nullptr ), txt ) ||
+                       lcmatch( r->skill_used->name(), txt );
+
+            case search_type::primary_skill:
+                return lcmatch( r->skill_used->name(), txt );
 
             case search_type::component:
                 return search_reqs( r->requirements().get_components(), txt );
@@ -93,10 +151,15 @@ std::vector<const recipe *> recipe_subset::search( const std::string &txt,
                 return search_reqs( r->requirements().get_qualities(), txt );
 
             case search_type::quality_result: {
-                const auto &quals = item::find_type( r->result )->qualities;
+                const auto &quals = item::find_type( r->result() )->qualities;
                 return std::any_of( quals.begin(), quals.end(), [&]( const std::pair<quality_id, int> &e ) {
                     return lcmatch( e.first->name, txt );
                 } );
+            }
+
+            case search_type::description_result: {
+                const item result = r->create_result();
+                return lcmatch( remove_color_tags( result.info( true ) ), txt );
             }
 
             default:
@@ -105,6 +168,41 @@ std::vector<const recipe *> recipe_subset::search( const std::string &txt,
     } );
 
     return res;
+}
+
+std::vector<const recipe *> recipe_subset::search_result( const itype_id &item ) const
+{
+    std::vector<const recipe *> res;
+
+    std::copy_if( recipes.begin(), recipes.end(), std::back_inserter( res ), [&]( const recipe * r ) {
+        return item == r->result() ||
+               ( r->has_byproducts() && r->byproducts.find( item ) != r->byproducts.end() );
+    } );
+
+    return res;
+}
+
+bool recipe_subset::empty_category( const std::string &cat, const std::string &subcat ) const
+{
+    if( subcat == "CSC_*_FAVORITE" ) {
+        return uistate.favorite_recipes.empty();
+    } else if( subcat == "CSC_*_RECENT" ) {
+        return uistate.recent_recipes.empty();
+    }
+
+    auto iter = category.find( cat );
+    if( iter != category.end() ) {
+        if( subcat.empty() ) {
+            return false;
+        } else {
+            for( auto &e : iter->second ) {
+                if( e->subcategory == subcat ) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 std::vector<const recipe *> recipe_subset::in_category( const std::string &cat,
@@ -142,13 +240,13 @@ void recipe_dictionary::load_uncraft( JsonObject &jo, const std::string &src )
 }
 
 recipe &recipe_dictionary::load( JsonObject &jo, const std::string &src,
-                                 std::map<std::string, recipe> &dest )
+                                 std::map<recipe_id, recipe> &dest )
 {
     recipe r;
 
     // defer entries dependent upon as-yet unparsed definitions
     if( jo.has_string( "copy-from" ) ) {
-        auto base = jo.get_string( "copy-from" );
+        auto base = recipe_id( jo.get_string( "copy-from" ) );
         if( !dest.count( base ) ) {
             deferred.emplace_back( jo.str(), src );
             return null_recipe;
@@ -168,24 +266,24 @@ size_t recipe_dictionary::size() const
     return recipes.size();
 }
 
-std::map<std::string, recipe>::const_iterator recipe_dictionary::begin() const
+std::map<recipe_id, recipe>::const_iterator recipe_dictionary::begin() const
 {
     return recipes.begin();
 }
 
-std::map<std::string, recipe>::const_iterator recipe_dictionary::end() const
+std::map<recipe_id, recipe>::const_iterator recipe_dictionary::end() const
 {
     return recipes.end();
 }
 
-void recipe_dictionary::finalize_internal( std::map<std::string, recipe> &obj )
+void recipe_dictionary::finalize_internal( std::map<recipe_id, recipe> &obj )
 {
     for( auto &elem : obj ) {
         elem.second.finalize();
     }
     // remove any blacklisted or invalid recipes...
     delete_if( []( const recipe & elem ) {
-        if( elem.is_blacklisted() ) {
+        if( elem.is_blacklisted() || elem.obsolete ) {
             return true;
         }
 
@@ -215,29 +313,32 @@ void recipe_dictionary::finalize()
         auto &r = e.second;
 
         for( const auto &bk : r.booksets ) {
-            islot_book::recipe_with_description_t desc{ &r, bk.second, item::nname( r.result ), false };
-            item::find_type( bk.first )->book->recipes.insert( desc );
+            const itype *booktype = item::find_type( bk.first );
+            int req = bk.second > 0 ? bk.second : std::max( booktype->book->req, r.difficulty );
+            islot_book::recipe_with_description_t desc{ &r, req, r.result_name(), false };
+            const_cast<islot_book &>( *booktype->book ).recipes.insert( desc );
         }
 
         // if reversible and no specific uncraft recipe exists use this recipe
-        if( r.reversible && !recipe_dict.uncraft.count( r.result ) ) {
-            recipe_dict.uncraft[ r.result ] = r;
+        if( r.is_reversible() && !recipe_dict.uncraft.count( recipe_id( r.result() ) ) ) {
+            recipe_dict.uncraft[ recipe_id( r.result() ) ] = r;
         }
     }
 
     // add pseudo uncrafting recipes
     for( const itype *e : item_controller->all() ) {
         const itype_id id = e->get_id();
+        const recipe_id rid = recipe_id( id );
 
-        // books that don't alreay have an uncrafting recipe
-        if( e->book && !recipe_dict.uncraft.count( id ) && e->volume > 0 ) {
+        // books that don't already have an uncrafting recipe
+        if( e->book && !recipe_dict.uncraft.count( rid ) && e->volume > 0 ) {
             int pages = e->volume / units::from_milliliter( 12.5 );
-            auto &bk = recipe_dict.uncraft[id];
-            bk.ident_ = id;
-            bk.result = id;
+            auto &bk = recipe_dict.uncraft[rid];
+            bk.ident_ = rid;
+            bk.result_ = id;
             bk.reversible = true;
             bk.requirements_ = *requirement_id( "uncraft_book" ) * pages;
-            bk.time = pages * 10; // @todo allow specifying time in requirement_data
+            bk.time = pages * 10; // @todo: allow specifying time in requirement_data
         }
     }
 
