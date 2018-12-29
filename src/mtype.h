@@ -1,46 +1,49 @@
 #pragma once
 #ifndef MTYPE_H
 #define MTYPE_H
+// SEE ALSO: monitemsdef.cpp, which defines data on which items any given
+// monster may carry.
 
-#include "color.h"
-#include "damage.h"
 #include "enums.h"
+#include "color.h"
 #include "int_id.h"
-#include "mattack_common.h"
-#include "pathfinding.h"
 #include "string_id.h"
-#include "units.h"
+#include "damage.h"
+#include "pathfinding.h"
+#include "mattack_common.h"
 
 #include <bitset>
-#include <map>
-#include <set>
+#include <string>
 #include <vector>
+#include <set>
+#include <math.h>
 
 class Creature;
 class monster;
 class monfaction;
-class emit;
-using emit_id = string_id<emit>;
 struct dealt_projectile_attack;
 struct species_type;
 enum field_id : int;
 enum body_part : int;
 enum m_size : int;
 
-using mon_action_death  = void ( * )( monster & );
-using mon_action_attack = bool ( * )( monster * );
-using mon_action_defend = void ( * )( monster &, Creature *, dealt_projectile_attack const * );
+using mon_action_death  = void (*)(monster*);
+using mon_action_attack = bool (*)(monster*);
+using mon_action_defend = void (*)(monster&, Creature*, dealt_projectile_attack const*);
 struct MonsterGroup;
 using mongroup_id = string_id<MonsterGroup>;
+extern template const string_id<MonsterGroup> string_id<MonsterGroup>::NULL_ID;
 struct mtype;
 using mtype_id = string_id<mtype>;
+/** @relates string_id */
+extern template const string_id<mtype> string_id<mtype>::NULL_ID;
+
 using mfaction_id = int_id<monfaction>;
 using species_id = string_id<species_type>;
 class effect_type;
 using efftype_id = string_id<effect_type>;
 class JsonArray;
 class JsonIn;
-class JsonObject;
 class material_type;
 using material_id = string_id<material_type>;
 
@@ -51,6 +54,7 @@ using emit_id = string_id<emit>;
 
 class harvest_list;
 using harvest_id = string_id<harvest_list>;
+extern template const string_id<harvest_list> string_id<harvest_list>::NULL_ID;
 
 // These are triggers which may affect the monster's anger or morale.
 // They are handled in monster::check_triggers(), in monster.cpp
@@ -65,13 +69,15 @@ enum monster_trigger : int {
     MTRIG_FRIEND_DIED, // A monster of the same type died
     MTRIG_FRIEND_ATTACKED, // A monster of the same type attacked
     MTRIG_SOUND,  // Heard a sound
-    MTRIG_PLAYER_NEAR_BABY, // Player/npc is near a baby monster of this type
-    MTRIG_MATING_SEASON, // It's the monster's mating season (defined by baby_flags)
     N_MONSTER_TRIGGERS
 };
 
 // Feel free to add to m_flags.  Order shouldn't matter, just keep it tidy!
 // And comment them well. ;)
+// mfb(n) converts a flag to its appropriate position in mtype's bitfield
+#ifndef mfb
+#define mfb(n) static_cast <unsigned long> (1 << (n))
+#endif
 enum m_flag : int {
     MF_NULL = 0,            //
     MF_SEES,                // It can see you (and will run/follow)
@@ -82,7 +88,7 @@ enum m_flag : int {
     MF_STUMBLES,            // Stumbles in its movement
     MF_WARM,                // Warm blooded
     MF_NOHEAD,              // Headshots not allowed!
-    MF_HARDTOSHOOT,         // It's one size smaller for ranged attacks, no less then MS_TINY
+    MF_HARDTOSHOOT,         // Some shots are actually misses
     MF_GRABS,               // Its attacks may grab us!
     MF_BASHES,              // Bashes down doors
     MF_DESTROYS,            // Bashes down walls and more
@@ -105,13 +111,12 @@ enum m_flag : int {
     MF_ELECTRIC,            // Shocks unarmed attackers
     MF_ACIDPROOF,           // Immune to acid
     MF_ACIDTRAIL,           // Leaves a trail of acid
-    MF_SHORTACIDTRAIL,       // Leaves an intermittent trail of acid
     MF_FIREPROOF,           // Immune to fire
     MF_SLUDGEPROOF,         // Ignores the effect of sludge trails
     MF_SLUDGETRAIL,         // Causes monster to leave a sludge trap trail when moving
     MF_FIREY,               // Burns stuff and is immune to fire
     MF_QUEEN,               // When it dies, local populations start to die off too
-    MF_ELECTRONIC,          // e.g. a robot; affected by EMP blasts, and other stuff
+    MF_ELECTRONIC,          // e.g. a robot; affected by emp blasts, and other stuff
     MF_FUR,                 // May produce fur when butchered
     MF_LEATHER,             // May produce leather when butchered
     MF_WOOL,                // May produce wool when butchered
@@ -135,8 +140,7 @@ enum m_flag : int {
     MF_ARTHROPOD_BLOOD,     // Forces monster to bleed hemolymph.
     MF_ACID_BLOOD,          // Makes monster bleed acid. Fun stuff! Does not automatically dissolve in a pool of acid on death.
     MF_BILE_BLOOD,          // Makes monster bleed bile.
-    MF_ABSORBS,             // Consumes objects it moves over which gives bonus hp.
-    MF_ABSORBS_SPLITS,      // Consumes objects it moves over which gives bonus hp. If it gets enough bonus HP, it spawns a copy of itself.
+    MF_ABSORBS,             // Consumes objects it moves over.
     MF_REGENMORALE,         // Will stop fleeing if at max hp, and regen anger and morale to positive values.
     MF_CBM_CIV,             // May produce a common CBM a power CBM when butchered.
     MF_CBM_POWER,           // May produce a power CBM when butchered, independent of MF_CBM_wev.
@@ -144,7 +148,6 @@ enum m_flag : int {
     MF_CBM_OP,              // May produce a bionic from bionics_op when butchered, and the power storage is mk 2.
     MF_CBM_TECH,            // May produce a bionic from bionics_tech when butchered.
     MF_CBM_SUBS,            // May produce a bionic from bionics_subs when butchered.
-    MF_FILTHY,              // Any clothing it drops will be filthy.
     MF_FISHABLE,            // It is fishable.
     MF_GROUP_BASH,          // Monsters that can pile up against obstacles and add their strength together to break them.
     MF_SWARMS,              // Monsters that like to group together and form loose packs
@@ -159,21 +162,12 @@ enum m_flag : int {
     MF_AVOID_DANGER_2,      // This monster will path around most dangers instead of through them.
     MF_PRIORITIZE_TARGETS,  // This monster will prioritize targets depending on their danger levels
     MF_NOT_HALLU,           // Monsters that will NOT appear when player's producing hallucinations
-    MF_CATFOOD,             // This monster will become friendly when fed cat food.
-    MF_CATTLEFODDER,        // This monster will become friendly when fed cattle fodder.
-    MF_BIRDFOOD,            // This monster will become friendly when fed bird food.
-    MF_DOGFOOD,             // This monster will become friendly when fed dog food.
-    MF_MILKABLE,            // This monster is milkable.
-    MF_NO_BREED,            // This monster doesn't breed, even though it has breed data
-    MF_PET_WONT_FOLLOW,     // This monster won't follow the player automatically when tamed.
-    MF_DRIPS_NAPALM,        // This monster ocassionally drips napalm on move
-    MF_ELECTRIC_FIELD,      // This monster is surrounded by an electrical field that ignites flammable liquids near it
-    MF_LOUDMOVES,           // This monster makes move noises as if ~2 sizes louder, even if flying.
     MF_MAX                  // Sets the length of the flags - obviously must be LAST
 };
 
 /** Used to store monster effects placed on attack */
-struct mon_effect_data {
+struct mon_effect_data
+{
     efftype_id id;
     int duration;
     bool affect_hit_bp;
@@ -181,10 +175,8 @@ struct mon_effect_data {
     bool permanent;
     int chance;
 
-    mon_effect_data( const efftype_id &nid, int dur, bool ahbp, body_part nbp, bool perm,
-                     int nchance ) :
-        id( nid ), duration( dur ), affect_hit_bp( ahbp ), bp( nbp ), permanent( perm ),
-        chance( nchance ) {}
+    mon_effect_data(const efftype_id &nid, int dur, bool ahbp, body_part nbp, bool perm, int nchance) :
+                    id(nid), duration(dur), affect_hit_bp(ahbp), bp(nbp), permanent(perm), chance(nchance) {};
 };
 
 struct mtype {
@@ -192,13 +184,11 @@ struct mtype {
         friend class MonsterGenerator;
         std::string name;
         std::string name_plural;
-        std::string description;
 
-        std::set< const species_type * > species_ptrs;
+        std::set< const species_type* > species_ptrs;
 
         void add_special_attacks( JsonObject &jo, const std::string &member_name, const std::string &src );
-        void remove_special_attacks( JsonObject &jo, const std::string &member_name,
-                                     const std::string &src );
+        void remove_special_attacks( JsonObject &jo, const std::string &member_name, const std::string &src );
 
         void add_special_attack( JsonArray jarr, const std::string &src );
         void add_special_attack( JsonObject jo, const std::string &src );
@@ -208,17 +198,14 @@ struct mtype {
         // TODO: maybe make this private as well? It must be set to `true` only once,
         // and must never be set back to `false`.
         bool was_loaded = false;
+        std::string description;
         std::set<species_id> species;
         std::set<std::string> categories;
         mfaction_id default_faction;
-        /** UTF-8 encoded symbol, should be exactly one cell wide. */
+        /** UTF-8 encoded symbol, should be exactyle one cell wide. */
         std::string sym;
         nc_color color = c_white;
-        /** hint for tilesets that don't have a tile for this monster */
-        std::string looks_like;
         m_size size;
-        units::volume volume;
-        units::mass weight;
         std::vector<material_id> mat;
         phase_id phase;
         std::set<m_flag> flags;
@@ -232,7 +219,7 @@ struct mtype {
 
         int difficulty = 0;     /** many uses; 30 min + (diff-3)*30 min = earliest appearance */
         int hp = 0;
-        int speed = 0;          /** e.g. human = 100 */
+        int speed = 0;          /** eg. human = 100 */
         int agro = 0;           /** chance will attack [-100,100] */
         int morale = 0;         /** initial morale level at spawn */
 
@@ -276,28 +263,15 @@ struct mtype {
         // Monster upgrade variables
         bool upgrades;
         int half_life;
-        int age_grow;
         mtype_id upgrade_into;
         mongroup_id upgrade_group;
         mtype_id burn_into;
 
-        // Monster reproduction variables
-        bool reproduces;
-        int baby_timer;
-        int baby_count;
-        mtype_id baby_monster;
-        itype_id baby_egg;
-        std::vector<std::string> baby_flags;
-
-        // Monster biosignature variables
-        bool biosignatures;
-        int biosig_timer;
-        itype_id biosig_item;
-
         // Monster's ability to destroy terrain and vehicles
         int bash_skill;
 
-        mtype();
+        // Default constructor
+        mtype ();
         /**
          * Check if this type is of the same species as the other one, because
          * species is a set and can contain several species, one entry that is
@@ -316,27 +290,25 @@ struct mtype {
         pathfinding_settings path_settings;
 
         // Used to fetch the properly pluralized monster type name
-        std::string nname( unsigned int quantity = 1 ) const;
+        std::string nname(unsigned int quantity = 1) const;
         bool has_special_attack( const std::string &attack_name ) const;
-        bool has_flag( m_flag flag ) const;
-        bool has_flag( const std::string &flag ) const;
+        bool has_flag(m_flag flag) const;
+        bool has_flag(std::string flag) const;
         bool made_of( const material_id &material ) const;
-        bool made_of_any( const std::set<material_id> &materials ) const;
-        void set_flag( const std::string &flag, bool state );
-        bool has_anger_trigger( monster_trigger trigger ) const;
-        bool has_fear_trigger( monster_trigger trigger ) const;
-        bool has_placate_trigger( monster_trigger trigger ) const;
-        bool in_category( const std::string &category ) const;
+        void set_flag(std::string flag, bool state);
+        bool has_anger_trigger(monster_trigger trigger) const;
+        bool has_fear_trigger(monster_trigger trigger) const;
+        bool has_placate_trigger(monster_trigger trigger) const;
+        bool in_category(std::string category) const;
         bool in_species( const species_id &spec ) const;
         bool in_species( const species_type &spec ) const;
         //Used for corpses.
-        field_id bloodType() const;
-        field_id gibType() const;
+        field_id bloodType () const;
+        field_id gibType () const;
         // The item id of the meat items that are produced by this monster (or "null")
         // if there is no matching item type. e.g. "veggy" for plant monsters.
         itype_id get_meat_itype() const;
         int get_meat_chunks_count() const;
-        std::string get_description() const;
 
         // Historically located in monstergenerator.cpp
         void load( JsonObject &jo, const std::string &src );

@@ -2,13 +2,7 @@
 #ifndef NPC_FAVOR_H
 #define NPC_FAVOR_H
 
-#include "string_id.h"
-
-using itype_id = std::string;
-class Skill;
-using skill_id = string_id<Skill>;
-class JsonIn;
-class JsonOut;
+#include "json.h"
 
 enum npc_favor_type {
     FAVOR_NULL,
@@ -19,7 +13,7 @@ enum npc_favor_type {
     NUM_FAVOR_TYPES
 };
 
-struct npc_favor {
+struct npc_favor : public JsonSerializer, public JsonDeserializer {
     npc_favor_type type;
     int value;
     itype_id item_id;
@@ -29,11 +23,13 @@ struct npc_favor {
         type = FAVOR_NULL;
         value = 0;
         item_id = "null";
-        skill = skill_id::NULL_ID();
-    }
+        skill = skill_id::NULL_ID;
+    };
 
-    void serialize( JsonOut &jsout ) const;
-    void deserialize( JsonIn &jsin );
+    using JsonSerializer::serialize;
+    void serialize( JsonOut &jsout ) const override;
+    using JsonDeserializer::deserialize;
+    void deserialize( JsonIn &jsin ) override;
 };
 
 #endif

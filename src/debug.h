@@ -2,7 +2,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#include "string_formatter.h"
+#include "printf_check.h"
 
 /**
  *      debugmsg(msg, ...)
@@ -67,15 +67,8 @@
 #define debugmsg(...) realDebugmsg(__FILE__, STRING(__LINE__), __FUNCTION_NAME__, __VA_ARGS__)
 
 // Don't use this, use debugmsg instead.
-void realDebugmsg( const char *filename, const char *line, const char *funcname,
-                   const std::string &mes );
-template<typename ...Args>
-inline void realDebugmsg( const char *const filename, const char *const line,
-                          const char *const funcname, const char *const mes, Args &&... args )
-{
-    return realDebugmsg( filename, line, funcname, string_format( mes,
-                         std::forward<Args>( args )... ) );
-}
+void realDebugmsg( const char *filename, const char *line, const char *funcname, const char *mes,
+                   ... ) PRINTF_LIKE( 4, 5 );
 
 // Enumerations                                                     {{{1
 // ---------------------------------------------------------------------
@@ -107,7 +100,7 @@ enum DebugClass {
     D_MAP_GEN = 1 << 3,
     /** Main game class */
     D_GAME    = 1 << 4,
-    /** npcs*.cpp */
+    /** ncps*.cpp */
     D_NPC     = 1 << 5,
     /** SDL & tiles & anything graphical */
     D_SDL     = 1 << 6,
@@ -115,17 +108,12 @@ enum DebugClass {
     DC_ALL    = ( 1 << 30 ) - 1
 };
 
-enum class DebugOutput {
-    std_err,
-    file,
-};
-
 /** Initializes the debugging system, called exactly once from main() */
-void setupDebug( DebugOutput );
+void setupDebug();
 /** Opposite of setupDebug, shuts the debugging system down. */
 void deinitDebug();
 
-// Function Declarations                                            {{{1
+// Function Declatations                                            {{{1
 // ---------------------------------------------------------------------
 /**
  * Set debug levels that should be logged. bitmask is a OR-combined
@@ -175,12 +163,5 @@ std::ostream &operator<<( std::ostream &out, const std::vector<C, A> &elm )
  */
 extern bool debug_mode;
 
-#ifdef BACKTRACE
-/**
- * Write a stack backtrace to the given ostream
- */
-void debug_write_backtrace( std::ostream &out );
-#endif
-
-// vim:tw=72:sw=4:fdm=marker:fdl=0:
+// vim:tw=72:sw=1:fdm=marker:fdl=0:
 #endif

@@ -44,7 +44,6 @@
     "revert_to_itype": "gloople",
     "special_attacks": [ [ "PARROT", 0 ] ],
     "death_function": [ "MELT" ],
-    "harvest": "exempt",
     "flags": [ "HEARS", "GOODHEARING", "NOHEAD", "POISON", "NO_BREATHE", "ACIDPROOF" ]
   },
   {
@@ -60,7 +59,7 @@
     "speed": 60,
     "material": [ "flesh" ],
     "symbol": "O",
-    "color": "light_gray",
+    "color": "lt_gray",
     "phase": "LIQUID",
     "aggression": -99,
     "morale": -5,
@@ -74,7 +73,6 @@
     "revert_to_itype": "gray",
     "special_attacks": [ [ "PARROT", 0 ] ],
     "death_function": [ "MELT" ],
-    "harvest": "exempt",
     "flags": [ "HEARS", "GOODHEARING", "NOHEAD", "POISON", "NO_BREATHE", "ACIDPROOF" ]
   },
   {
@@ -104,7 +102,6 @@
     "revert_to_itype": "oozle",
     "special_attacks": [ [ "PARROT", 0 ] ],
     "death_function": [ "MELT" ],
-    "harvest": "exempt",
     "flags": [ "HEARS", "GOODHEARING", "NOHEAD", "POISON", "NO_BREATHE", "ACIDPROOF" ]
   }
 ]

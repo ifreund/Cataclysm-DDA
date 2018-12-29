@@ -2,19 +2,16 @@
 #ifndef MATTACK_ACTORS_H
 #define MATTACK_ACTORS_H
 
-#include "damage.h"
-#include "mattack_common.h"
 #include "mtype.h"
-#include "string_id.h"
+#include "damage.h"
 #include "weighted_list.h"
-
-#include <map>
+#include "mattack_common.h"
+#include <tuple>
 #include <vector>
+#include <map>
 
 class JsonObject;
 class monster;
-class gun_mode;
-using gun_mode_id = string_id<gun_mode>;
 
 class leap_actor : public mattack_actor
 {
@@ -31,7 +28,7 @@ class leap_actor : public mattack_actor
         float max_consider_range;
 
         leap_actor() { }
-        ~leap_actor() override = default;
+        ~leap_actor() override { }
 
         void load_internal( JsonObject &jo, const std::string &src ) override;
         bool call( monster & ) const override;
@@ -78,7 +75,7 @@ class melee_actor : public mattack_actor
         std::string hit_dmg_npc;
 
         melee_actor();
-        ~melee_actor() override = default;
+        ~melee_actor() override { }
 
         virtual Creature *find_target( monster &z ) const;
         virtual void on_damage( monster &z, Creature &target, dealt_damage_instance &dealt ) const;
@@ -96,7 +93,7 @@ class bite_actor : public melee_actor
         int no_infection_chance;
 
         bite_actor();
-        ~bite_actor() override = default;
+        ~bite_actor() override { }
 
         void on_damage( monster &z, Creature &target, dealt_damage_instance &dealt ) const override;
 
@@ -123,7 +120,7 @@ class gun_actor : public mattack_actor
         /*@}*/
 
         /** Specify weapon mode to use at different engagement distances */
-        std::map<std::pair<int, int>, gun_mode_id> ranges;
+        std::map<std::pair<int, int>, std::string> ranges;
 
         int max_ammo = INT_MAX; /** limited also by monster starting_ammo */
 
@@ -148,11 +145,11 @@ class gun_actor : public mattack_actor
         bool require_targeting_npc = false;
         bool require_targeting_monster = false;
 
-        int targeting_timeout = 8; /** Default turns after which targeting is lost and needs repeating */
+        int targeting_timeout = 8; /** Default turns afer which targeting is lsot and needs repeating */
         int targeting_timeout_extend = 3; /** Increase timeout by this many turns after each shot */
 
         std::string targeting_sound;
-        int targeting_volume = 6; /** If set to zero don't emit any targeting sounds */
+        int targeting_volume = 6; /** If set to zero don't emit any targetting sounds */
 
         bool laser_lock = false; /** Does switching between targets incur further targeting penalty */
         /*@}*/
@@ -160,10 +157,10 @@ class gun_actor : public mattack_actor
         /** If true then disable this attack completely if not brightly lit */
         bool require_sunlight = false;
 
-        void shoot( monster &z, Creature &target, const gun_mode_id &mode ) const;
+        void shoot( monster &z, Creature &target, const std::string &mode ) const;
 
         gun_actor();
-        ~gun_actor() override = default;
+        ~gun_actor() override { }
 
         void load_internal( JsonObject &jo, const std::string &src ) override;
         bool call( monster & ) const override;

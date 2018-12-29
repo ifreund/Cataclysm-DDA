@@ -2,12 +2,9 @@
 #ifndef EMIT_H
 #define EMIT_H
 
-#include "field.h"
+#include "json.h"
 #include "string_id.h"
-
-#include <map>
-
-class JsonObject;
+#include "field.h"
 
 class emit;
 using emit_id = string_id<emit>;

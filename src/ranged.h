@@ -13,16 +13,15 @@ struct tripoint;
  * Targeting UI callback is passed the item being targeted (if any)
  * and should return pointer to effective ammo data (if any)
  */
-using target_callback = std::function<const itype *( item *obj )>;
+using target_callback = std::function<const itype *(item *obj)>;
 using firing_callback = std::function<void( const int )>;
 
-enum target_mode : int {
+enum target_mode {
     TARGET_MODE_FIRE,
     TARGET_MODE_THROW,
     TARGET_MODE_TURRET,
     TARGET_MODE_TURRET_MANUAL,
-    TARGET_MODE_REACH,
-    TARGET_MODE_THROW_BLIND
+    TARGET_MODE_REACH
 };
 
 // @todo: move callbacks to a new struct and define some constructors for ease of use
@@ -39,9 +38,8 @@ struct targeting_data {
     firing_callback post_fire;
 };
 
-class target_handler
-{
-        // @todo: alias return type of target_ui
+class target_handler {
+    // @todo: alias return type of target_ui
     public:
         /**
          *  Prompts for target and returns trajectory to it.
@@ -65,7 +63,5 @@ class target_handler
                                          const target_callback &on_mode_change = target_callback(),
                                          const target_callback &on_ammo_change = target_callback() );
 };
-
-int range_with_even_chance_of_good_hit( int dispersion );
 
 #endif // RANGED_H

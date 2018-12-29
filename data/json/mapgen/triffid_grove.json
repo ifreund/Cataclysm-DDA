@@ -41,8 +41,12 @@
         "7": "t_tree",
         ">": "t_slope_down"
       },
-      "furniture": {  "^": "f_rubble_rock" },
-      "monster": { "B": { "monster": "mon_biollante" } }
+      "furniture": {
+        "^": "f_rubble_rock"
+      },
+      "monster": {
+        "B": { "monster": "mon_biollante" }
+      }
     }
   },
   {
@@ -87,8 +91,12 @@
         "7": "t_tree",
         ">": "t_slope_down"
       },
-      "furniture": { "^": "f_rubble_rock" },
-      "monster": { "B": { "monster": "mon_biollante" } }
+      "furniture": {
+        "^": "f_rubble_rock"
+      },
+      "monster": {
+        "B": { "monster": "mon_biollante" }
+      }
     }
   }
 ]

@@ -2,11 +2,13 @@
 #ifndef OVERLAY_ORDERING_H
 #define OVERLAY_ORDERING_H
 
-#include "string_id.h"
+#include "json.h"
 
 #include <map>
+#include <string>
 
-class JsonObject;
+#include "string_id.h"
+
 struct mutation_branch;
 using trait_id = string_id<mutation_branch>;
 

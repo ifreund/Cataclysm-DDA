@@ -11262,13 +11262,13 @@
           "rotates": false
         },
         {
-          "id": [ "novel_coa", "novel_coa2" ],
+          "id": "novel_coa",
           "fg": 686,
           "bg": 625,
           "rotates": false
         },
         {
-          "id": [ "novel_crime", "novel_crime2" ],
+          "id": "novel_crime",
           "fg": 704,
           "bg": 625,
           "rotates": false
@@ -11376,7 +11376,7 @@
           "rotates": false
         },
         {
-          "id": [ "novel_war", "novel_war2" ],
+          "id": "novel_war",
           "fg": 705,
           "bg": 625,
           "rotates": false
@@ -12341,10 +12341,10 @@
           "rotates": false
         },
         {
-          "id": [ "t_fence", "t_fence_h" ],
+          "id": "t_fence_h",
           "fg": 2129,
           "bg": 629,
-          "rotates": true
+          "rotates": false
         },
         {
           "id": "t_fence_wire",
@@ -13251,7 +13251,7 @@
         },
         {
           "id": "fd_fatigue",
-          "fg": 2849,
+          "fg": 631,
           "rotates": false
         },
         {
@@ -14552,10 +14552,10 @@
           "rotates": false
         },
         {
-          "id": [ "t_railing", "t_railing_h" ],
+          "id": "t_railing_h",
           "fg": 2219,
           "bg": 650,
-          "rotates": true,
+          "rotates": false,
           "multitile": true,
           "additional_tiles": [
             {
@@ -14594,7 +14594,7 @@
           "id": "t_railing_v",
           "fg": 2219,
           "bg": 650,
-          "rotates": true,
+          "rotates": false,
           "multitile": true,
           "additional_tiles": [
             {
@@ -15107,7 +15107,7 @@
           "rotates": false
         },
         {
-          "id": [ "t_thconc_floor", "t_thconc_floor_olight" ],
+          "id": "t_thconc_floor",
           "fg": 650,
           "rotates": false
         },
@@ -15213,10 +15213,10 @@
           "rotates": false
         },
         {
-          "id": [ "t_chainfence", "t_chainfence_h" ],
+          "id": "t_chainfence_h",
           "fg": 2066,
           "bg": 650,
-          "rotates": true,
+          "rotates": false,
           "multitile": true,
           "additional_tiles": [
             {
@@ -15255,7 +15255,7 @@
           "id": "t_chainfence_v",
           "fg": 2066,
           "bg": 650,
-          "rotates": true,
+          "rotates": false,
           "multitile": true,
           "additional_tiles": [
             {
@@ -15320,7 +15320,7 @@
           "rotates": false
         },
         {
-          "id": [ "t_door_glass_o", "t_door_glass_frosted_o" ],
+          "id": "t_door_glass_o",
           "fg": 2115,
           "bg": 652,
           "rotates": false
@@ -15943,7 +15943,7 @@
           "bg": 657
         },
         {
-          "id": [ "t_fence_season_winter", "t_fence_h_season_winter" ],
+          "id": "t_fence_h_season_winter",
           "fg": 2129,
           "bg": 657
         },
@@ -16774,7 +16774,7 @@
           "rotates": false
         },
         {
-          "id": "apple_sugar",
+          "id": "apple_vac",
           "fg": 730,
           "rotates": false
         },
@@ -17384,7 +17384,7 @@
           "rotates": false
         },
         {
-          "id": "salted_fish",
+          "id": "fish_vac",
           "fg": 836,
           "rotates": false
         },
@@ -17447,7 +17447,7 @@
           "rotates": false
         },
         {
-          "id": "hflesh_salted",
+          "id": "hflesh_vac",
           "fg": 855,
           "rotates": false
         },
@@ -17637,7 +17637,7 @@
           "rotates": false
         },
         {
-          "id": "meat_salted",
+          "id": "meat_vac",
           "fg": 901,
           "rotates": false
         },
@@ -18003,7 +18003,7 @@
           "rotates": false
         },
         {
-          "id": "veggy_salted",
+          "id": "veggy_vac",
           "fg": 1002,
           "rotates": false
         },
@@ -19057,8 +19057,28 @@
           "rotates": false
         },
         {
-          "id": "plastic_bag_vac",
+          "id": "bag_apple_vac",
           "fg": 1215,
+          "rotates": false
+        },
+        {
+          "id": "bag_fish_vac",
+          "fg": 1216,
+          "rotates": false
+        },
+        {
+          "id": "bag_hflesh_vac",
+          "fg": 1217,
+          "rotates": false
+        },
+        {
+          "id": "bag_meat_vac",
+          "fg": 1218,
+          "rotates": false
+        },
+        {
+          "id": "bag_veggy_vac",
+          "fg": 1219,
           "rotates": false
         },
         {
@@ -20948,8 +20968,7 @@
           "rotates": false
         },
         {
-          "id": [ "t_chainfence_season_winter", "t_chainfence_h_season_winter" ] ,
-          "rotates": true,
+          "id": "t_chainfence_h_season_winter",
           "multitile": true,
           "additional_tiles": [
             {
@@ -21148,7 +21167,7 @@
           "fg": 2112
         },
         {
-          "id": [ "t_door_glass_c", "t_door_glass_frosted_c" ],
+          "id": "t_door_glass_c",
           "fg": 2114,
           "rotates": false
         },
@@ -21934,7 +21953,7 @@
           "rotates": false
         },
         {
-          "id": "f_brazier",
+          "id": "tr_brazier",
           "fg": 2486
         },
         {

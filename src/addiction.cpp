@@ -1,9 +1,8 @@
 #include "addiction.h"
-
-#include "morale_types.h"
-#include "output.h"
-#include "player.h"
+#include "debug.h"
 #include "pldata.h"
+#include "player.h"
+#include "morale_types.h"
 #include "rng.h"
 #include "translations.h"
 
@@ -46,7 +45,7 @@ void addict_effect( player &u, addiction &add )
             }
             if( rng( 8, 400 ) < in ) {
                 u.add_msg_if_player( m_bad, _( "Your hands start shaking... you need it bad!" ) );
-                u.add_effect( effect_shakes, 2_minutes );
+                u.add_effect( effect_shakes, 20 );
             }
             break;
 
@@ -73,9 +72,9 @@ void addict_effect( player &u, addiction &add )
             } else if( rng( 8, 300 ) < in ) {
                 u.add_msg_if_player( m_bad, msg_2.c_str() );
                 u.add_morale( morale_type, -35, -10 * in );
-                u.add_effect( effect_shakes, 5_minutes );
+                u.add_effect( effect_shakes, 50 );
             } else if( !u.has_effect( effect_hallu ) && rng( 10, 1600 ) < in ) {
-                u.add_effect( effect_hallu, 6_hours );
+                u.add_effect( effect_hallu, 3600 );
             }
             break;
         }
@@ -83,18 +82,17 @@ void addict_effect( player &u, addiction &add )
         case ADD_SLEEP:
             // No effects here--just in player::can_sleep()
             // EXCEPT!  Prolong this addiction longer than usual.
-            if( one_in( 2 ) && add.sated < 0_turns ) {
-                add.sated += 1_turns;
+            if( one_in( 2 ) && add.sated < 0 ) {
+                add.sated++;
             }
             break;
 
         case ADD_PKILLER:
-            if( calendar::once_every( time_duration::from_turns( 100 - in * 4 ) ) &&
-                u.get_painkiller() > 20 - in ) {
+            if( calendar::once_every( 100 - in * 4 ) && u.get_painkiller() > 20 - in ) {
                 u.mod_painkiller( -1 );    // Tolerance increases!
             }
             if( u.get_painkiller() >= 35 ) { // No further effects if we're doped up.
-                add.sated = 0_turns;
+                add.sated = 0;
                 break;
             }
 
@@ -110,7 +108,7 @@ void addict_effect( player &u, addiction &add )
             if( one_in( 20 ) && dice( 2, 20 ) < in ) {
                 u.add_msg_if_player( m_bad, _( "Your hands start shaking... you need some painkillers." ) );
                 u.add_morale( MORALE_CRAVING_OPIATE, -40, -10 * in );
-                u.add_effect( effect_shakes, 2_minutes + in * 5_turns );
+                u.add_effect( effect_shakes, 20 + in * 5 );
             } else if( one_in( 20 ) && dice( 2, 30 ) < in ) {
                 u.add_msg_if_player( m_bad, _( "You feel anxious.  You need your painkillers!" ) );
                 u.add_morale( MORALE_CRAVING_OPIATE, -30, -10 * in );
@@ -134,12 +132,12 @@ void addict_effect( player &u, addiction &add )
             } else if( one_in( 10 ) && dice( 2, 80 ) < in ) {
                 u.add_msg_if_player( m_bad, _( "Your hands start shaking... you need a pick-me-up." ) );
                 u.add_morale( MORALE_CRAVING_SPEED, -25, -20 * in );
-                u.add_effect( effect_shakes, in * 2_minutes );
+                u.add_effect( effect_shakes, in * 20 );
             } else if( one_in( 50 ) && dice( 2, 100 ) < in ) {
                 u.add_msg_if_player( m_bad, _( "You stop suddenly, feeling bewildered." ) );
                 u.moves -= 300;
             } else if( !u.has_effect( effect_hallu ) && one_in( 20 ) && 8 + dice( 2, 80 ) < in ) {
-                u.add_effect( effect_hallu, 6_hours );
+                u.add_effect( effect_hallu, 3600 );
             }
         }
         break;
@@ -179,7 +177,7 @@ void addict_effect( player &u, addiction &add )
                     u.add_msg_if_player( m_warning,
                                          _( "You daydream what it'd be like if you were *different*.  Different is good." ) );
                 }
-            } else if( in > 5 || one_in( 500 - 15 * in ) ) {
+            } else if( in > 5 || one_in( ( 500 - 15 * in ) ) ) {
                 u.add_msg_if_player( m_warning, rng( 0, 6 ) < in ? _( "You haven't had any mutagen lately." ) :
                                      _( "You could use some new parts..." ) );
                 u.add_morale( MORALE_CRAVING_MUTAGEN, -5, -50 );
@@ -231,7 +229,7 @@ const std::string &addiction_type_name( add_type const cur )
     return error_string;
 }
 
-const std::string &addiction_name( const addiction &cur )
+const std::string &addiction_name( addiction const &cur )
 {
     static const std::map<add_type, std::string> type_map = {{
             { ADD_CIG, _( "Nicotine Withdrawal" ) },
@@ -285,7 +283,7 @@ morale_type addiction_craving( add_type const cur )
     return MORALE_NULL;
 }
 
-add_type addiction_type( const std::string &name )
+add_type addiction_type( std::string const &name )
 {
     static const std::map<std::string, add_type> type_map = {{
             { "nicotine", ADD_CIG },
@@ -313,7 +311,7 @@ add_type addiction_type( const std::string &name )
     return ADD_NULL;
 }
 
-const std::string &addiction_text( const addiction &cur )
+const std::string &addiction_text( addiction const &cur )
 {
     static const std::map<add_type, std::string> addiction_msg = {{
             { ADD_CIG, _( "Intelligence - 1;   Occasional cravings" ) },
@@ -343,7 +341,7 @@ const std::string &addiction_text( const addiction &cur )
         return iter->second;
     }
 
-    static const std::string error_string;
+    static const std::string error_string( "" );
     return error_string;
 }
 

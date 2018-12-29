@@ -1,20 +1,13 @@
 #include "gates.h"
-
 #include "game.h" // TODO: This is a circular dependency
-#include "generic_factory.h"
-#include "iexamine.h"
-#include "json.h"
 #include "map.h"
 #include "mapdata.h"
+#include "generic_factory.h"
 #include "messages.h"
-#include "output.h"
-#include "player.h"
+#include "json.h"
 #include "vehicle.h"
-#include "vpart_position.h"
 
-#include <algorithm>
 #include <string>
-#include <vector>
 
 // Gates namespace
 
@@ -29,7 +22,7 @@ struct gate_data {
     gate_data() :
         moves( 0 ),
         bash_dmg( 0 ),
-        was_loaded( false ) {}
+        was_loaded( false ) {};
 
     gate_id id;
 
@@ -160,9 +153,7 @@ void gates::open_gate( const tripoint &pos )
     bool fail = false;
 
     for( int i = 0; i < 4; ++i ) {
-        static constexpr tripoint dir[4] = {
-            { 1, 0, 0 }, { 0, 1, 0 }, { -1, 0, 0 }, { 0, -1, 0 }
-        };
+        static const tripoint dir[4] = { { 1, 0, 0 }, { 0, 1, 0 }, { -1, 0, 0 }, { 0, -1, 0 } };
         const tripoint wall_pos = pos + dir[i];
 
         if( !gate.is_suitable_wall( wall_pos ) ) {
@@ -243,7 +234,7 @@ void doors::close_door( map &m, Character &who, const tripoint &closep )
         if( mon->is_player() ) {
             who.add_msg_if_player( m_info, _( "There's some buffoon in the way!" ) );
         } else if( mon->is_monster() ) {
-            // TODO: Houseflies, mosquitoes, etc shouldn't count
+            // TODO: Houseflies, mosquitos, etc shouldn't count
             who.add_msg_if_player( m_info, _( "The %s is in the way!" ), mon->get_name().c_str() );
         } else {
             who.add_msg_if_player( m_info, _( "%s is in the way!" ), mon->disp_name().c_str() );
@@ -251,11 +242,10 @@ void doors::close_door( map &m, Character &who, const tripoint &closep )
         return;
     }
 
-    if( optional_vpart_position vp = m.veh_at( closep ) ) {
-        vehicle *const veh = &vp->vehicle();
-        const int vpart = vp->part_index();
-        const int closable = veh->next_part_to_close( vpart,
-                             veh_pointer_or_null( m.veh_at( who.pos() ) ) != veh );
+    int vpart;
+    vehicle *const veh = m.veh_at( closep, vpart );
+    if( veh ) {
+        const int closable = veh->next_part_to_close( vpart, m.veh_at( who.pos() ) != veh );
         const int inside_closable = veh->next_part_to_close( vpart );
         const int openable = veh->next_part_to_open( vpart );
         if( closable >= 0 ) {

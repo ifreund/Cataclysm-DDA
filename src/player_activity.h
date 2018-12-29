@@ -3,27 +3,26 @@
 #define PLAYER_ACTIVITY_H
 
 #include "enums.h"
+#include "json.h"
 #include "item_location.h"
 #include "string_id.h"
 
 #include <climits>
-#include <set>
 #include <vector>
 
 class player;
 class Character;
-class JsonIn;
-class JsonOut;
 class player_activity;
 class activity_type;
 
 using activity_id = string_id<activity_type>;
+extern template const string_id<activity_type> string_id<activity_type>::NULL_ID;
 
-class player_activity
+class player_activity : public JsonSerializer, public JsonDeserializer
 {
     private:
+        void finish( player *p );
         activity_id type;
-        std::set<distraction_type> ignored_distractions;
     public:
         /** Total number of moves required to complete the activity */
         int moves_total;
@@ -36,10 +35,15 @@ class player_activity
         /** An activity specific value. */
         std::string name;
         std::vector<item_location> targets;
+        bool ignore_trivial;
         std::vector<int> values;
         std::vector<std::string> str_values;
         std::vector<tripoint> coords;
         tripoint placement;
+        /** If true, the player has been warned of dangerously close monsters with
+         * respect to this activity.
+         */
+        bool warned_of_proximity;
         /** If true, the activity will be auto-resumed next time the player attempts
          *  an identical activity. This value is set dynamically.
          */
@@ -47,7 +51,7 @@ class player_activity
 
         player_activity();
         player_activity( activity_id, int turns = 0, int Index = -1, int pos = INT_MIN,
-                         const std::string &name_in = "" );
+                         std::string name_in = "" );
         player_activity( player_activity && ) = default;
         player_activity( const player_activity & );
         player_activity &operator=( player_activity && ) = default;
@@ -67,12 +71,17 @@ class player_activity
         }
         bool rooted() const;
 
-        // Question to ask when the activity is to be stopped,
+        // Question to ask when the activity is to be stoped,
         // e.g. "Stop doing something?", already translated.
         std::string get_stop_phrase() const;
 
+        /**
+         * If this returns true, the activity can be aborted with
+         * the ACTION_PAUSE key (see game::handle_key_blocking_activity)
+         */
+        bool is_abortable() const;
         int get_value( size_t index, int def = 0 ) const;
-        std::string get_str_value( size_t index, const std::string &def = "" ) const;
+        std::string get_str_value( size_t index, const std::string def = "" ) const;
         /**
          * If this returns true, the action can be continued without
          * starting from scratch again (see player::backlog). This is only
@@ -81,8 +90,10 @@ class player_activity
          */
         bool is_suspendable() const;
 
-        void serialize( JsonOut &jsout ) const;
-        void deserialize( JsonIn &jsin );
+        using JsonSerializer::serialize;
+        void serialize( JsonOut &jsout ) const override;
+        using JsonDeserializer::deserialize;
+        void deserialize( JsonIn &jsin ) override;
         /** Convert from the old enumeration to the new string_id */
         void deserialize_legacy_type( int legacy_type, activity_id &dest );
 
@@ -91,17 +102,13 @@ class player_activity
          * at the end of the turn, do_turn also executes whatever actions, if
          * any, are needed to conclude the activity.
          */
-        void do_turn( player &p );
+        void do_turn( player *p );
 
         /**
          * Returns true if activities are similar enough that this activity
          * can be resumed instead of starting the other activity.
          */
         bool can_resume_with( const player_activity &other, const Character &who ) const;
-
-        bool is_distraction_ignored( distraction_type type ) const;
-        void ignore_distraction( distraction_type type );
-        void allow_distractions();
 };
 
 #endif

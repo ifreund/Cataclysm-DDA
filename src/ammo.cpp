@@ -1,8 +1,7 @@
 #include "ammo.h"
-
 #include "debug.h"
-#include "item.h"
 #include "json.h"
+#include "item.h"
 #include "translations.h"
 
 #include <unordered_map>
@@ -21,9 +20,13 @@ ammo_map_t &all_ammunition_types()
 void ammunition_type::load_ammunition_type( JsonObject &jsobj )
 {
     ammunition_type &res = all_ammunition_types()[ ammotype( jsobj.get_string( "id" ) ) ];
-    res.name_             = jsobj.get_string( "name" );
+    res.name_             = _( jsobj.get_string( "name" ).c_str() );
     res.default_ammotype_ = jsobj.get_string( "default" );
 }
+
+/** @relates string_id */
+template<>
+const string_id<ammunition_type> string_id<ammunition_type>::NULL_ID( "NULL" );
 
 /** @relates string_id */
 template<>
@@ -34,17 +37,17 @@ bool string_id<ammunition_type>::is_valid() const
 
 /** @relates string_id */
 template<>
-const ammunition_type &string_id<ammunition_type>::obj() const
+ammunition_type const &string_id<ammunition_type>::obj() const
 {
-    const auto &the_map = all_ammunition_types();
+    auto const &the_map = all_ammunition_types();
 
-    const auto it = the_map.find( *this );
+    auto const it = the_map.find( *this );
     if( it != the_map.end() ) {
         return it->second;
     }
 
     debugmsg( "Tried to get invalid ammunition: %s", c_str() );
-    static const ammunition_type null_ammunition {
+    static ammunition_type const null_ammunition {
         "null"
     };
     return null_ammunition;
@@ -58,8 +61,8 @@ void ammunition_type::reset()
 void ammunition_type::check_consistency()
 {
     for( const auto &ammo : all_ammunition_types() ) {
-        const auto &id = ammo.first;
-        const auto &at = ammo.second.default_ammotype_;
+        auto const &id = ammo.first;
+        auto const &at = ammo.second.default_ammotype_;
 
         // TODO: these ammo types should probably not have default ammo at all.
         if( at == "UPS" || at == "components" || at == "thrown" ) {
@@ -70,9 +73,4 @@ void ammunition_type::check_consistency()
             debugmsg( "ammo type %s has invalid default ammo %s", id.c_str(), at.c_str() );
         }
     }
-}
-
-std::string ammunition_type::name() const
-{
-    return _( name_.c_str() );
 }

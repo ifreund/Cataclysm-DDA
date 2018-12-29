@@ -1,27 +1,22 @@
-#include "mattack_actors.h"
+#include <vector>
 
 #include "game.h"
-#include "generic_factory.h"
-#include "gun_mode.h"
-#include "itype.h"
-#include "line.h"
 #include "map.h"
 #include "map_iterator.h"
-#include "messages.h"
 #include "monster.h"
-#include "npc.h"
-#include "output.h"
-#include "sounds.h"
+#include "mattack_actors.h"
+#include "messages.h"
 #include "translations.h"
+#include "sounds.h"
+#include "npc.h"
+#include "debug.h"
+#include "generic_factory.h"
 
-const efftype_id effect_grabbed( "grabbed" );
 const efftype_id effect_bite( "bite" );
 const efftype_id effect_infected( "infected" );
 const efftype_id effect_laserlocked( "laserlocked" );
 const efftype_id effect_was_laserlocked( "was_laserlocked" );
 const efftype_id effect_targeted( "targeted" );
-const efftype_id effect_poison( "poison" );
-const efftype_id effect_badpoison( "badpoison" );
 
 // Simplified version of the function in monattack.cpp
 bool is_adjacent( const monster &z, const Creature &target )
@@ -38,7 +33,11 @@ bool dodge_check( float max_accuracy, Creature &target )
 {
     ///\EFFECT_DODGE increases chance of dodging special attacks of monsters
     float dodge = std::max( target.get_dodge() - rng( 0, max_accuracy ), 0.0f );
-    return rng( 0, 10000 ) < 10000 / ( 1 + 99 * exp( -0.6f * dodge ) );
+    if( rng( 0, 10000 ) < 10000 / ( 1 + ( 99 * exp( -0.6f * dodge ) ) ) ) {
+        return true;
+    }
+
+    return false;
 }
 
 void leap_actor::load_internal( JsonObject &obj, const std::string & )
@@ -60,7 +59,7 @@ mattack_actor *leap_actor::clone() const
 
 bool leap_actor::call( monster &z ) const
 {
-    if( !z.can_act() || !z.move_effects( false ) ) {
+    if( !z.can_act() ) {
         return false;
     }
 
@@ -73,7 +72,7 @@ bool leap_actor::call( monster &z ) const
 
     // We wanted the float for range check
     // int here will make the jumps more random
-    int best = static_cast<int>( best_float );
+    int best = ( int )best_float;
     if( !allow_no_target && z.attack_target() == nullptr ) {
         return false;
     }
@@ -258,7 +257,7 @@ void melee_actor::on_damage( monster &z, Creature &target, dealt_damage_instance
     if( target.is_player() ) {
         sfx::play_variant_sound( "mon_bite", "bite_hit", sfx::get_heard_volume( z.pos() ),
                                  sfx::get_heard_angle( z.pos() ) );
-        sfx::do_player_death_hurt( dynamic_cast<player &>( target ), false );
+        sfx::do_player_death_hurt( dynamic_cast<player &>( target ), 0 );
     }
     auto msg_type = target.attitude_to( g->u ) == Creature::A_FRIENDLY ? m_bad : m_neutral;
     const body_part bp = dealt.bp_hit;
@@ -268,7 +267,7 @@ void melee_actor::on_damage( monster &z, Creature &target, dealt_damage_instance
     for( const auto &eff : effects ) {
         if( x_in_y( eff.chance, 100 ) ) {
             const body_part affected_bp = eff.affect_hit_bp ? bp : eff.bp;
-            target.add_effect( eff.id, time_duration::from_turns( eff.duration ), affected_bp, eff.permanent );
+            target.add_effect( eff.id, eff.duration, affected_bp, eff.permanent );
         }
     }
 }
@@ -291,19 +290,15 @@ void bite_actor::load_internal( JsonObject &obj, const std::string &src )
 void bite_actor::on_damage( monster &z, Creature &target, dealt_damage_instance &dealt ) const
 {
     melee_actor::on_damage( z, target, dealt );
-    if( target.has_effect( effect_grabbed ) && one_in( no_infection_chance - dealt.total_damage() ) ) {
+    if( one_in( no_infection_chance - dealt.total_damage() ) ) {
         const body_part hit = dealt.bp_hit;
         if( target.has_effect( effect_bite, hit ) ) {
-            target.add_effect( effect_bite, 40_minutes, hit, true );
+            target.add_effect( effect_bite, 400, hit, true );
         } else if( target.has_effect( effect_infected, hit ) ) {
-            target.add_effect( effect_infected, 25_minutes, hit, true );
+            target.add_effect( effect_infected, 250, hit, true );
         } else {
-            target.add_effect( effect_bite, 1_turns, hit, true );
+            target.add_effect( effect_bite, 1, hit, true );
         }
-    }
-    if( target.has_trait( trait_id( "TOXICFLESH" ) ) ) {
-        z.add_effect( effect_poison, 5_minutes );
-        z.add_effect( effect_badpoison, 5_minutes );
     }
 }
 
@@ -343,7 +338,7 @@ void gun_actor::load_internal( JsonObject &obj, const std::string & )
             obj.throw_error( "incomplete or invalid range specified", "ranges" );
         }
         ranges.emplace( std::make_pair<int, int>( mode.get_int( 0 ), mode.get_int( 1 ) ),
-                        gun_mode_id( mode.size() > 2 ? mode.get_string( 2 ) : "" ) );
+                        mode.size() > 2 ? mode.get_string( 2 ) : "" );
     }
 
     obj.read( "max_ammo", max_ammo );
@@ -358,8 +353,6 @@ void gun_actor::load_internal( JsonObject &obj, const std::string & )
     }
     if( obj.read( "no_ammo_sound", no_ammo_sound ) ) {
         no_ammo_sound = _( no_ammo_sound.c_str() );
-    } else {
-        no_ammo_sound = _( "Click." );
     }
 
     obj.read( "targeting_cost", targeting_cost );
@@ -373,10 +366,7 @@ void gun_actor::load_internal( JsonObject &obj, const std::string & )
 
     if( obj.read( "targeting_sound", targeting_sound ) ) {
         targeting_sound = _( targeting_sound.c_str() );
-    } else {
-        targeting_sound = _( "Beep." );
     }
-
     obj.read( "targeting_volume", targeting_volume );
 
     obj.get_bool( "laser_lock", laser_lock );
@@ -428,7 +418,7 @@ bool gun_actor::call( monster &z ) const
     return false;
 }
 
-void gun_actor::shoot( monster &z, Creature &target, const gun_mode_id &mode ) const
+void gun_actor::shoot( monster &z, Creature &target, const std::string &mode ) const
 {
     if( require_sunlight && !g->is_in_sunlight( z.pos() ) ) {
         if( one_in( 3 ) && g->u.sees( z ) ) {
@@ -446,15 +436,14 @@ void gun_actor::shoot( monster &z, Creature &target, const gun_mode_id &mode ) c
 
     if( not_targeted || not_laser_locked ) {
         if( targeting_volume > 0 && !targeting_sound.empty() ) {
-            sounds::sound( z.pos(), targeting_volume, sounds::sound_t::alarm,
-                           _( targeting_sound.c_str() ) );
+            sounds::sound( z.pos(), targeting_volume, _( targeting_sound.c_str() ) );
         }
         if( not_targeted ) {
-            z.add_effect( effect_targeted, time_duration::from_turns( targeting_timeout ) );
+            z.add_effect( effect_targeted, targeting_timeout );
         }
         if( not_laser_locked ) {
-            target.add_effect( effect_laserlocked, 5_turns );
-            target.add_effect( effect_was_laserlocked, 5_turns );
+            target.add_effect( effect_laserlocked, 5 );
+            target.add_effect( effect_was_laserlocked, 5 );
             target.add_msg_if_player( m_warning,
                                       _( "You're not sure why you've got a laser dot on you..." ) );
         }
@@ -475,7 +464,7 @@ void gun_actor::shoot( monster &z, Creature &target, const gun_mode_id &mode ) c
 
     if( !gun.ammo_sufficient() ) {
         if( !no_ammo_sound.empty() ) {
-            sounds::sound( z.pos(), 10, sounds::sound_t::combat, _( no_ammo_sound.c_str() ) );
+            sounds::sound( z.pos(), 10, _( no_ammo_sound.c_str() ) );
         }
         return;
     }
@@ -483,7 +472,7 @@ void gun_actor::shoot( monster &z, Creature &target, const gun_mode_id &mode ) c
     standard_npc tmp( _( "The " ) + z.name(), {}, 8, fake_str, fake_dex, fake_int, fake_per );
     tmp.set_fake( true );
     tmp.setpos( z.pos() );
-    tmp.set_attitude( z.friendly ? NPCATT_FOLLOW : NPCATT_KILL );
+    tmp.attitude = z.friendly ? NPCATT_FOLLOW : NPCATT_KILL;
     tmp.recoil = 0; // no need to aim
 
     for( const auto &pr : fake_skills ) {
@@ -495,17 +484,17 @@ void gun_actor::shoot( monster &z, Creature &target, const gun_mode_id &mode ) c
 
     if( g->u.sees( z ) ) {
         add_msg( m_warning, _( description.c_str() ), z.name().c_str(),
-                 tmp.weapon.tname().c_str() );
+                 _( tmp.weapon.gun_type().c_str() ) );
     }
 
     z.ammo[ammo] -= tmp.fire_gun( target.pos(), gun.gun_current_mode().qty );
 
     if( require_targeting ) {
-        z.add_effect( effect_targeted, time_duration::from_turns( targeting_timeout_extend ) );
+        z.add_effect( effect_targeted, targeting_timeout_extend );
     }
 
     if( laser_lock ) {
         // To prevent spamming laser locks when the player can tank that stuff somehow
-        target.add_effect( effect_was_laserlocked, 5_turns );
+        target.add_effect( effect_was_laserlocked, 5 );
     }
 }

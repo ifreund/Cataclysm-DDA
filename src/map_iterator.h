@@ -2,9 +2,8 @@
 #ifndef MAP_ITERATOR_H
 #define MAP_ITERATOR_H
 
-#include "enums.h"
-
 #include <cstddef>
+#include "enums.h"
 
 class tripoint_range
 {
@@ -29,7 +28,7 @@ class tripoint_range
                     : p( _p ), range( _range ) {
                 }
 
-                // Increment x, then if it goes outside range, "wrap around" and increment y
+                // Incement x, then if it goes outside range, "wrap around" and increment y
                 // Same for y and z
                 inline point_generator &operator++() {
                     p.x++;
@@ -53,14 +52,10 @@ class tripoint_range
                 }
 
                 inline bool operator!=( const point_generator &other ) const {
-                    // Reverse coordinates order, because it will usually only be compared with endpoint
-                    // which will always differ in Z, except for the very last comparison
+                    // Reverse coord order, because it will usually only be compared with endpoint
+                    // which will always differ in z, except for the very last comparison
                     const tripoint &pt = other.p;
                     return p.z != pt.z || p.y != pt.y || p.x != pt.x;
-                }
-
-                inline bool operator==( const point_generator &other ) const {
-                    return !( *this != other );
                 }
         };
 
@@ -98,13 +93,6 @@ class tripoint_range
 
         bool empty() const {
             return size() == 0;
-        }
-
-        const tripoint &min() const {
-            return minp;
-        }
-        const tripoint &max() const {
-            return maxp;
         }
 };
 

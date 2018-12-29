@@ -38,6 +38,19 @@
     },
     {
         "type" : "trap",
+        "id": "tr_brazier",
+        "name" : "brazier",
+        "color" : "red",
+        "symbol" : "#",
+        "visibility" : -1,
+        "avoidance" : 0,
+        "difficulty" : 0,
+        "action" : "none",
+        "drops" : ["brazier"],
+        "benign" : true
+    },
+    {
+        "type" : "trap",
         "id": "tr_funnel",
         "name" : "funnel",
         "color" : "yellow",
@@ -176,7 +189,7 @@
         "avoidance" : 5,
         "difficulty" : 6,
         "action" : "shotgun",
-        "drops" : ["string_36", "shotgun_d"]
+        "drops" : ["string_36", "shotgun_s"]
     },
     {
         "type" : "trap",
@@ -214,6 +227,30 @@
         "avoidance" : 4,
         "difficulty" : 99,
         "action" : "blade"
+    },
+    {
+        "type" : "trap",
+        "id": "tr_light_snare",
+        "name" : "light snare trap",
+        "color" : "brown",
+        "symbol" : "^",
+        "visibility" : 5,
+        "avoidance" : 10,
+        "difficulty" : 2,
+        "action" : "snare_light",
+        "drops" : ["light_snare_kit"]
+    },
+    {
+        "type" : "trap",
+        "id": "tr_heavy_snare",
+        "name" : "heavy snare trap",
+        "color" : "brown",
+        "symbol" : "^",
+        "visibility" : 3,
+        "avoidance" : 10,
+        "difficulty" : 4,
+        "action" : "snare_heavy",
+        "drops" : ["heavy_snare_kit"]
     },
     {
         "type" : "trap",
@@ -327,7 +364,7 @@
         "color" : "magenta",
         "symbol" : "%",
         "visibility" : 0,
-        "avoidance" : 99,
+        "avoidance" : 30,
         "difficulty" : 99,
         "action" : "portal"
     },
@@ -467,29 +504,5 @@
         "drops" : ["metal_funnel"],
         "benign" : true,
         "funnel_radius": 400
-    },
-    {
-        "type" : "trap",
-        "id": "tr_firewood_source",
-        "name" : "firewood source",
-        "color" : "green",
-        "symbol" : "x",
-        "visibility" : -1,
-        "avoidance" : 0,
-        "difficulty" : 0,
-        "action" : "none",
-        "benign" : true
-    },
-    {
-        "type" : "trap",
-        "id": "tr_practice_target",
-        "name" : "practice target",
-        "color" : "red",
-        "symbol" : "x",
-        "visibility" : -1,
-        "avoidance" : 0,
-        "difficulty" : 0,
-        "action" : "none",
-        "benign" : true
     }
 ]

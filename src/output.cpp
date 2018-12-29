@@ -1,36 +1,29 @@
+#include <string>
+#include <vector>
+#include <cstdarg>
+#include <cstring>
+#include <stdlib.h>
+#include <sstream>
+#include <algorithm>
+#include <map>
+#include <errno.h>
+
 #include "output.h"
 
-#include "cata_utility.h"
-#include "catacharset.h"
 #include "color.h"
-#include "cursesdef.h"
 #include "input.h"
+#include "rng.h"
+#include "options.h"
+#include "cursesdef.h"
+#include "catacharset.h"
+#include "debug.h"
+#include "path_info.h"
+#include "ui.h"
 #include "item.h"
 #include "line.h"
 #include "name.h"
-#include "options.h"
-#include "popup.h"
-#include "rng.h"
-#include "string_formatter.h"
+#include "cata_utility.h"
 #include "string_input_popup.h"
-#include "units.h"
-
-#include <algorithm>
-#include <cstdarg>
-#include <cstdlib>
-#include <cstring>
-#include <map>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <vector>
-
-#if (defined TILES || defined _WIN32 || defined WINDOWS)
-#include "cursesport.h"
-#endif
-#ifdef __ANDROID__
-#include <SDL_keyboard.h>
-#endif
 
 // Display data
 int TERMX;
@@ -57,8 +50,15 @@ extern bool use_tiles;
 
 extern bool test_mode;
 
+void delwin_functor::operator()( WINDOW *w ) const
+{
+    if( w != nullptr ) {
+        delwin( w );
+    }
+}
+
 // utf8 version
-std::vector<std::string> foldstring( std::string str, int width, const char split )
+std::vector<std::string> foldstring( std::string str, int width )
 {
     std::vector<std::string> lines;
     if( width < 1 ) {
@@ -67,55 +67,12 @@ std::vector<std::string> foldstring( std::string str, int width, const char spli
     }
     std::stringstream sstr( str );
     std::string strline;
-    std::vector<std::string> tags;
     while( std::getline( sstr, strline, '\n' ) ) {
-        if( strline.empty() ) {
-            // Special case empty lines as std::getline() sets failbit immediately
-            // if the line is empty.
-            lines.emplace_back();
-        } else {
-            std::string wrapped = word_rewrap( strline, width, split );
-            std::stringstream swrapped( wrapped );
-            std::string wline;
-            while( std::getline( swrapped, wline, '\n' ) ) {
-                // Ensure that each line is independently color-tagged
-                // Re-add tags closed in the previous line
-                const std::string rawwline = wline;
-                if( !tags.empty() ) {
-                    std::stringstream swline;
-                    for( const std::string &tag : tags ) {
-                        swline << tag;
-                    }
-                    swline << wline;
-                    wline = swline.str();
-                }
-                // Process the additional tags in the current line
-                const std::vector<size_t> tags_pos = get_tag_positions( rawwline );
-                for( const size_t tag_pos : tags_pos ) {
-                    if( tag_pos + 1 < rawwline.size() && rawwline[tag_pos + 1] == '/' ) {
-                        if( !tags.empty() ) {
-                            tags.pop_back();
-                        }
-                    } else {
-                        auto tag_end = rawwline.find( '>', tag_pos );
-                        if( tag_end != std::string::npos ) {
-                            tags.emplace_back( rawwline.substr( tag_pos, tag_end + 1 - tag_pos ) );
-                        }
-                    }
-                }
-                // Close any unclosed tags
-                if( !tags.empty() ) {
-                    std::stringstream swline;
-                    swline << wline;
-                    for( auto it = tags.rbegin(); it != tags.rend(); ++it ) {
-                        // currently the only closing tag is </color>
-                        swline << "</color>";
-                    }
-                    wline = swline.str();
-                }
-                // The resulting line can be printed independently and have the correct color
-                lines.emplace_back( wline );
-            }
+        std::string wrapped = word_rewrap( strline, width );
+        std::stringstream swrapped( wrapped );
+        std::string wline;
+        while( std::getline( swrapped, wline, '\n' ) ) {
+            lines.push_back( wline );
         }
     }
     return lines;
@@ -155,12 +112,21 @@ std::string remove_color_tags( const std::string &s )
     return ret;
 }
 
-void print_colored_text( const catacurses::window &w, int y, int x, nc_color &color,
-                         nc_color base_color, const std::string &text )
+// returns number of printed lines
+int fold_and_print( WINDOW *w, int begin_y, int begin_x, int width, nc_color base_color,
+                    const char *mes, ... )
 {
-    if( y > -1 && x > -1 ) {
-        wmove( w, y, x );
-    }
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    return fold_and_print( w, begin_y, begin_x, width, base_color, text );
+}
+
+void print_colored_text( WINDOW *w, int y, int x, nc_color &color, nc_color base_color,
+                         const std::string &text )
+{
+    wmove( w, y, x );
     const auto color_segments = split_by_color( text );
     for( auto seg : color_segments ) {
         if( seg.empty() ) {
@@ -172,13 +138,18 @@ void print_colored_text( const catacurses::window &w, int y, int x, nc_color &co
             seg = rm_prefix( seg );
         }
 
-        wprintz( w, color, seg );
+        wprintz( w, color, "%s", seg.c_str() );
     }
 }
 
-void trim_and_print( const catacurses::window &w, int begin_y, int begin_x, int width,
-                     nc_color base_color, const std::string &text )
+void trim_and_print( WINDOW *w, int begin_y, int begin_x, int width, nc_color base_color,
+                     const char *mes, ... )
 {
+    va_list ap;
+    va_start( ap, mes );
+    std::string text = vstring_format( mes, ap );
+    va_end( ap );
+
     std::string sText;
     if( utf8_width( remove_color_tags( text ) ) > width ) {
 
@@ -187,14 +158,14 @@ void trim_and_print( const catacurses::window &w, int begin_y, int begin_x, int 
         std::string sColor;
 
         const auto color_segments = split_by_color( text );
-        for( const std::string &seg : color_segments ) {
+        for( auto seg : color_segments ) {
             sColor.clear();
 
             if( !seg.empty() && ( seg.substr( 0, 7 ) == "<color_" || seg.substr( 0, 7 ) == "</color" ) ) {
                 sTempText = rm_prefix( seg );
 
                 if( seg.substr( 0, 7 ) == "<color_" ) {
-                    sColor = seg.substr( 0, seg.find( '>' ) + 1 );
+                    sColor = seg.substr( 0, seg.find( ">" ) + 1 );
                 }
             } else {
                 sTempText = seg;
@@ -209,7 +180,7 @@ void trim_and_print( const catacurses::window &w, int begin_y, int begin_x, int 
             }
 
             sText += sColor + sTempText;
-            if( !sColor.empty() ) {
+            if( sColor != "" ) {
                 sText += "</color>";
             }
 
@@ -218,14 +189,14 @@ void trim_and_print( const catacurses::window &w, int begin_y, int begin_x, int 
             }
         }
     } else {
-        sText = text;
+        sText = std::move( text );
     }
 
     print_colored_text( w, begin_y, begin_x, base_color, base_color, sText );
 }
 
-int print_scrollable( const catacurses::window &w, int begin_line, const std::string &text,
-                      nc_color base_color, const std::string &scroll_msg )
+int print_scrollable( WINDOW *w, int begin_line, const std::string &text, nc_color base_color,
+                      const std::string &scroll_msg )
 {
     const size_t wwidth = getmaxx( w );
     const auto text_lines = foldstring( text, wwidth );
@@ -252,35 +223,45 @@ int print_scrollable( const catacurses::window &w, int begin_line, const std::st
 }
 
 // returns number of printed lines
-int fold_and_print( const catacurses::window &w, int begin_y, int begin_x, int width,
-                    nc_color base_color, const std::string &text, const char split )
+int fold_and_print( WINDOW *w, int begin_y, int begin_x, int width, nc_color base_color,
+                    const std::string &text )
 {
     nc_color color = base_color;
     std::vector<std::string> textformatted;
-    textformatted = foldstring( text, width, split );
-    for( int line_num = 0; static_cast<size_t>( line_num ) < textformatted.size(); line_num++ ) {
+    textformatted = foldstring( text, width );
+    for( int line_num = 0; ( size_t )line_num < textformatted.size(); line_num++ ) {
         print_colored_text( w, line_num + begin_y, begin_x, color, base_color, textformatted[line_num] );
     }
     return textformatted.size();
 }
 
-int fold_and_print_from( const catacurses::window &w, int begin_y, int begin_x, int width,
-                         int begin_line, nc_color base_color, const std::string &text )
+int fold_and_print_from( WINDOW *w, int begin_y, int begin_x, int width, int begin_line,
+                         nc_color base_color, const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    return fold_and_print_from( w, begin_y, begin_x, width, begin_line, base_color, text );
+}
+
+int fold_and_print_from( WINDOW *w, int begin_y, int begin_x, int width, int begin_line,
+                         nc_color base_color, const std::string &text )
 {
     const int iWinHeight = getmaxy( w );
     nc_color color = base_color;
     std::vector<std::string> textformatted;
     textformatted = foldstring( text, width );
-    for( int line_num = 0; static_cast<size_t>( line_num ) < textformatted.size(); line_num++ ) {
+    for( int line_num = 0; ( size_t )line_num < textformatted.size(); line_num++ ) {
         if( line_num + begin_y - begin_line == iWinHeight ) {
             break;
         }
         if( line_num >= begin_line ) {
             wmove( w, line_num + begin_y - begin_line, begin_x );
         }
-        // split into colorable sections
+        // split into colourable sections
         std::vector<std::string> color_segments = split_by_color( textformatted[line_num] );
-        // for each section, get the color, and print it
+        // for each section, get the colour, and print it
         std::vector<std::string>::iterator it;
         for( it = color_segments.begin(); it != color_segments.end(); ++it ) {
             if( !it->empty() && it->at( 0 ) == '<' ) {
@@ -289,10 +270,10 @@ int fold_and_print_from( const catacurses::window &w, int begin_y, int begin_x, 
             if( line_num >= begin_line ) {
                 std::string l = rm_prefix( *it );
                 if( l != "--" ) { // -- is a separation line!
-                    wprintz( w, color, rm_prefix( *it ) );
+                    wprintz( w, color, "%s", rm_prefix( *it ).c_str() );
                 } else {
                     for( int i = 0; i < width; i++ ) {
-                        wputch( w, c_dark_gray, LINE_OXOX );
+                        wputch( w, c_dkgray, LINE_OXOX );
                     }
                 }
             }
@@ -301,9 +282,7 @@ int fold_and_print_from( const catacurses::window &w, int begin_y, int begin_x, 
     return textformatted.size();
 }
 
-void multipage( const catacurses::window &w, const std::vector<std::string> &text,
-                const std::string &caption,
-                int begin_y )
+void multipage( WINDOW *w, std::vector<std::string> text, std::string caption, int begin_y )
 {
     int height = getmaxy( w );
     int width = getmaxx( w );
@@ -317,18 +296,17 @@ void multipage( const catacurses::window &w, const std::vector<std::string> &tex
         issue:     # of lines in the paragraph > height -> inf. loop;
         solution:  split this paragraph in two pieces;
     */
-    for( int i = 0; i < static_cast<int>( text.size() ); i++ ) {
-        if( begin_y == 0 && !caption.empty() ) {
+    for( int i = 0; i < ( int )text.size(); i++ ) {
+        if( begin_y == 0 && caption != "" ) {
             begin_y = fold_and_print( w, 0, 1, width - 2, c_white, caption ) + 1;
         }
-        std::vector<std::string> next_paragraph = foldstring( text[i], width - 2 );
-        if( begin_y + static_cast<int>( next_paragraph.size() ) > height - ( ( i + 1 ) < static_cast<int>
-                ( text.size() ) ? 1 : 0 ) ) {
+        std::vector<std::string> next_paragraph = foldstring( text[i].c_str(), width - 2 );
+        if( begin_y + ( int )next_paragraph.size() > height - ( ( i + 1 ) < ( int )text.size() ? 1 : 0 ) ) {
             // Next page
             i--;
-            center_print( w, height - 1, c_light_gray, _( "Press any key for more..." ) );
+            center_print( w, height - 1, c_ltgray, _( "Press any key for more..." ) );
             wrefresh( w );
-            catacurses::refresh();
+            refresh();
             inp_mngr.wait_for_any_key();
             werase( w );
             begin_y = 0;
@@ -337,12 +315,12 @@ void multipage( const catacurses::window &w, const std::vector<std::string> &tex
         }
     }
     wrefresh( w );
-    catacurses::refresh();
+    refresh();
     inp_mngr.wait_for_any_key();
 }
 
 // returns single string with left aligned name and right aligned value
-std::string name_and_value( const std::string &name, const std::string &value, int field_width )
+std::string name_and_value( std::string name, std::string value, int field_width )
 {
     int name_width = utf8_width( name );
     int value_width = utf8_width( value );
@@ -356,14 +334,18 @@ std::string name_and_value( const std::string &name, const std::string &value, i
     return result.str();
 }
 
-std::string name_and_value( const std::string &name, int value, int field_width )
+std::string name_and_value( std::string name, int value, int field_width )
 {
     return name_and_value( name, string_format( "%d", value ), field_width );
 }
 
-void center_print( const catacurses::window &w, const int y, const nc_color FG,
-                   const std::string &text )
+void center_print( WINDOW *w, int y, nc_color FG, const char *mes, ... )
 {
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+
     int window_width = getmaxx( w );
     int string_width = utf8_width( text );
     int x;
@@ -372,40 +354,60 @@ void center_print( const catacurses::window &w, const int y, const nc_color FG,
     } else {
         x = ( window_width - string_width ) / 2;
     }
-    mvwprintz( w, y, x, FG, text );
+    mvwprintz( w, y, x, FG, "%s", text.c_str() );
 }
 
-int right_print( const catacurses::window &w, const int line, const int right_indent,
-                 const nc_color FG, const std::string &text )
+int right_print( WINDOW *w, const int line, const int right_indent, const nc_color FG,
+                 const char *mes, ... )
 {
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+
     const int available_width = std::max( 1, getmaxx( w ) - right_indent );
     const int x = std::max( 0, available_width - utf8_width( text, true ) );
-    trim_and_print( w, line, x, available_width, FG, text );
+    trim_and_print( w, line, x, available_width, FG, "%s", text.c_str() );
     return x;
 }
 
-void wputch( const catacurses::window &w, nc_color FG, long ch )
+void mvputch( int y, int x, nc_color FG, const std::string &ch )
+{
+    attron( FG );
+    mvprintw( y, x, "%s", ch.c_str() );
+    attroff( FG );
+}
+
+void wputch( WINDOW *w, nc_color FG, long ch )
 {
     wattron( w, FG );
     waddch( w, ch );
     wattroff( w, FG );
 }
 
-void mvwputch( const catacurses::window &w, int y, int x, nc_color FG, long ch )
+void mvwputch( WINDOW *w, int y, int x, nc_color FG, long ch )
 {
     wattron( w, FG );
     mvwaddch( w, y, x, ch );
     wattroff( w, FG );
 }
 
-void mvwputch( const catacurses::window &w, int y, int x, nc_color FG, const std::string &ch )
+void mvwputch( WINDOW *w, int y, int x, nc_color FG, const std::string &ch )
 {
     wattron( w, FG );
-    mvwprintw( w, y, x, ch );
+    mvwprintw( w, y, x, "%s", ch.c_str() );
     wattroff( w, FG );
 }
 
-void mvwputch_inv( const catacurses::window &w, int y, int x, nc_color FG, long ch )
+void mvputch_inv( int y, int x, nc_color FG, const std::string &ch )
+{
+    nc_color HC = invert_color( FG );
+    attron( HC );
+    mvprintw( y, x, "%s", ch.c_str() );
+    attroff( HC );
+}
+
+void mvwputch_inv( WINDOW *w, int y, int x, nc_color FG, long ch )
 {
     nc_color HC = invert_color( FG );
     wattron( w, HC );
@@ -413,15 +415,23 @@ void mvwputch_inv( const catacurses::window &w, int y, int x, nc_color FG, long 
     wattroff( w, HC );
 }
 
-void mvwputch_inv( const catacurses::window &w, int y, int x, nc_color FG, const std::string &ch )
+void mvwputch_inv( WINDOW *w, int y, int x, nc_color FG, const std::string &ch )
 {
     nc_color HC = invert_color( FG );
     wattron( w, HC );
-    mvwprintw( w, y, x, ch );
+    mvwprintw( w, y, x, "%s", ch.c_str() );
     wattroff( w, HC );
 }
 
-void mvwputch_hi( const catacurses::window &w, int y, int x, nc_color FG, long ch )
+void mvputch_hi( int y, int x, nc_color FG, const std::string &ch )
+{
+    nc_color HC = hilite( FG );
+    attron( HC );
+    mvprintw( y, x, "%s", ch.c_str() );
+    attroff( HC );
+}
+
+void mvwputch_hi( WINDOW *w, int y, int x, nc_color FG, long ch )
 {
     nc_color HC = hilite( FG );
     wattron( w, HC );
@@ -429,19 +439,39 @@ void mvwputch_hi( const catacurses::window &w, int y, int x, nc_color FG, long c
     wattroff( w, HC );
 }
 
-void mvwputch_hi( const catacurses::window &w, int y, int x, nc_color FG, const std::string &ch )
+void mvwputch_hi( WINDOW *w, int y, int x, nc_color FG, const std::string &ch )
 {
     nc_color HC = hilite( FG );
     wattron( w, HC );
-    mvwprintw( w, y, x, ch );
+    mvwprintw( w, y, x, "%s", ch.c_str() );
     wattroff( w, HC );
 }
 
-void draw_custom_border( const catacurses::window &w, const catacurses::chtype ls,
-                         const catacurses::chtype rs, const catacurses::chtype ts, const catacurses::chtype bs,
-                         const catacurses::chtype tl, const catacurses::chtype tr, const catacurses::chtype bl,
-                         const catacurses::chtype br, const nc_color FG, const int posy, int height, const int posx,
-                         int width )
+void mvwprintz( WINDOW *w, int y, int x, nc_color FG, const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    wattron( w, FG );
+    mvwprintw( w, y, x, "%s", text.c_str() );
+    wattroff( w, FG );
+}
+
+void wprintz( WINDOW *w, nc_color FG, const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    wattron( w, FG );
+    wprintw( w, "%s", text.c_str() );
+    wattroff( w, FG );
+}
+
+void draw_custom_border( WINDOW *w, chtype ls, chtype rs, chtype ts, chtype bs, chtype tl,
+                         chtype tr, chtype bl, chtype br, nc_color FG, int posy, int height,
+                         int posx, int width )
 {
     wattron( w, FG );
 
@@ -450,63 +480,62 @@ void draw_custom_border( const catacurses::window &w, const catacurses::chtype l
 
     for( int j = posy; j < height + posy - 1; j++ ) {
         if( ls > 0 ) {
-            mvwputch( w, j, posx, c_light_gray, ( ls > 1 ) ? ls : LINE_XOXO ); // |
+            mvwputch( w, j, posx, c_ltgray, ( ls > 1 ) ? ls : LINE_XOXO ); // |
         }
 
         if( rs > 0 ) {
-            mvwputch( w, j, posx + width - 1, c_light_gray, ( rs > 1 ) ? rs : LINE_XOXO ); // |
+            mvwputch( w, j, posx + width - 1, c_ltgray, ( rs > 1 ) ? rs : LINE_XOXO ); // |
         }
     }
 
     for( int j = posx; j < width + posx - 1; j++ ) {
         if( ts > 0 ) {
-            mvwputch( w, posy, j, c_light_gray, ( ts > 1 ) ? ts : LINE_OXOX ); // --
+            mvwputch( w, posy, j, c_ltgray, ( ts > 1 ) ? ts : LINE_OXOX ); // --
         }
 
         if( bs > 0 ) {
-            mvwputch( w, posy + height - 1, j, c_light_gray, ( bs > 1 ) ? bs : LINE_OXOX ); // --
+            mvwputch( w, posy + height - 1, j, c_ltgray, ( bs > 1 ) ? bs : LINE_OXOX ); // --
         }
     }
 
     if( tl > 0 ) {
-        mvwputch( w, posy, posx, c_light_gray, ( tl > 1 ) ? tl : LINE_OXXO ); // |^
+        mvwputch( w, posy, posx, c_ltgray, ( tl > 1 ) ? tl : LINE_OXXO ); // |^
     }
 
     if( tr > 0 ) {
-        mvwputch( w, posy, posx + width - 1, c_light_gray, ( tr > 1 ) ? tr : LINE_OOXX ); // ^|
+        mvwputch( w, posy, posx + width - 1, c_ltgray, ( tr > 1 ) ? tr : LINE_OOXX ); // ^|
     }
 
     if( bl > 0 ) {
-        mvwputch( w, posy + height - 1, posx + 0, c_light_gray, ( bl > 1 ) ? bl : LINE_XXOO ); // |_
+        mvwputch( w, posy + height - 1, posx + 0, c_ltgray, ( bl > 1 ) ? bl : LINE_XXOO ); // |_
     }
 
     if( br > 0 ) {
-        mvwputch( w, posy + height - 1, posx + width - 1, c_light_gray, ( br > 1 ) ? br : LINE_XOOX ); // _|
+        mvwputch( w, posy + height - 1, posx + width - 1, c_ltgray, ( br > 1 ) ? br : LINE_XOOX ); // _|
     }
 
     wattroff( w, FG );
 }
 
-void draw_border( const catacurses::window &w, nc_color border_color, const std::string &title,
-                  nc_color title_color )
+void draw_border( WINDOW *w, nc_color border_color, std::string title, nc_color title_color )
 {
     wattron( w, border_color );
     wborder( w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
              LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
     wattroff( w, border_color );
     if( !title.empty() ) {
-        center_print( w, 0, title_color, title );
+        center_print( w, 0, title_color, title.c_str() );
     }
 }
 
-void draw_tabs( const catacurses::window &w, int active_tab, ... )
+void draw_tabs( WINDOW *w, int active_tab, ... )
 {
     int win_width;
     win_width = getmaxx( w );
     std::vector<std::string> labels;
     va_list ap;
     va_start( ap, active_tab );
-    while( const char *const tmp = va_arg( ap, char * ) ) {
+    while( char const *const tmp = va_arg( ap, char * ) ) {
         labels.push_back( tmp );
     }
     va_end( ap );
@@ -546,12 +575,12 @@ void draw_tabs( const catacurses::window &w, int active_tab, ... )
         mvwputch( w, 1, xpos, c_white, LINE_XOXO );
         mvwputch( w, 0, xpos + length + 1, c_white, LINE_OOXX );
         mvwputch( w, 1, xpos + length + 1, c_white, LINE_XOXO );
-        if( static_cast<int>( i ) == active_tab ) {
+        if( ( int )i == active_tab ) {
             mvwputch( w, 1, xpos - 2, h_white, '<' );
             mvwputch( w, 1, xpos + length + 3, h_white, '>' );
             mvwputch( w, 2, xpos, c_white, LINE_XOOX );
             mvwputch( w, 2, xpos + length + 1, c_white, LINE_XXOO );
-            mvwprintz( w, 1, xpos + 1, h_white, labels[i] );
+            mvwprintz( w, 1, xpos + 1, h_white, "%s", labels[i].c_str() );
             for( int x = xpos + 1; x <= xpos + length; x++ ) {
                 mvwputch( w, 0, x, c_white, LINE_OXOX );
                 mvwputch( w, 2, x, c_black, 'x' );
@@ -559,7 +588,7 @@ void draw_tabs( const catacurses::window &w, int active_tab, ... )
         } else {
             mvwputch( w, 2, xpos, c_white, LINE_XXOX );
             mvwputch( w, 2, xpos + length + 1, c_white, LINE_XXOX );
-            mvwprintz( w, 1, xpos + 1, c_white, labels[i] );
+            mvwprintz( w, 1, xpos + 1, c_white, "%s", labels[i].c_str() );
             for( int x = xpos + 1; x <= xpos + length; x++ ) {
                 mvwputch( w, 0, x, c_white, LINE_OXOX );
             }
@@ -568,30 +597,117 @@ void draw_tabs( const catacurses::window &w, int active_tab, ... )
     }
 }
 
-bool query_yn( const std::string &text )
+bool query_yn( const char *mes, ... )
 {
-    const bool force_uc = get_option<bool>( "FORCE_CAPITAL_YN" );
-
-    const auto allow_key = [force_uc]( const input_event & evt ) {
-        return !force_uc || evt.type != CATA_INPUT_KEYBOARD ||
-               // std::lower is undefined outside unsigned char range
-               evt.get_first_input() < 'a' || evt.get_first_input() > 'z';
-    };
-
-    return query_popup()
-           .context( "YESNO" )
-           .message( force_uc ?
-                     pgettext( "query_yn", "<color_light_red>%s (Case Sensitive)</color>" ) :
-                     pgettext( "query_yn", "<color_light_red>%s</color>" ), text )
-           .option( "YES", allow_key )
-           .option( "NO", allow_key )
-           .cursor( 1 )
-           .query()
-           .action == "YES";
+    va_list ap;
+    va_start( ap, mes );
+    bool ret = internal_query_yn( mes, ap );
+    va_end( ap );
+    return ret;
 }
 
-bool query_int( int &result, const std::string &text )
+// yn to make an immediate selection
+// esc to cancel, returns false
+// enter or space to accept, any other key to toggle
+bool internal_query_yn( const char *mes, va_list ap )
 {
+    const std::string text = vstring_format( mes, ap );
+
+    bool const force_uc = get_option<bool>( "FORCE_CAPITAL_YN" );
+
+    //~ Translation of query answer letters (y mean yes, n - no)
+    //~ Translation MUST contain symbols ONLY from ASCII charset. Undefined behavior otherwise.
+    //~ Translation MUST be in lowercase. Undefined behavior otherwise.
+    //~ Translation MUST contain only 2 letters. Original string will be used otherwise.
+    std::string selectors = _( "yn" );
+    if( selectors.length() != 2 ) {
+        selectors = "yn";
+    }
+    std::string ucselectors = selectors;
+    capitalize_letter( ucselectors, 0 );
+    capitalize_letter( ucselectors, 1 );
+
+    std::string ucwarning = "";
+    std::string *dispkeys = &selectors;
+    if( force_uc ) {
+        ucwarning = _( "Case Sensitive" );
+        ucwarning = " (" + ucwarning + ")";
+        dispkeys = &ucselectors;
+    }
+    int win_width = 0;
+
+    WINDOW *w = NULL;
+
+    std::string color_on = "<color_white>";
+    std::string color_off = "</color>";
+
+    int ch = '?';
+    bool result = true;
+    bool gotkey = false;
+
+    while( ch != '\n' && ch != ' ' && ch != KEY_ESCAPE ) {
+
+        // Upper case always works, lower case only if !force_uc.
+        gotkey = ( ch == ucselectors[0] ) || ( ch == ucselectors[1] ) ||
+                 ( !force_uc && ( ( ch == selectors[0] ) || ( ch == selectors[1] ) ) );
+
+        if( gotkey ) {
+            result = ( !force_uc && ( ch == selectors[0] ) ) || ( ch == ucselectors[0] );
+            break; // could move break past render to flash final choice once.
+        } else {
+            // Everything else toggles the selection.
+            result = !result;
+        }
+
+        // Additional query string ("Y/N") and uppercase hint, always has the same width!
+        std::string query;
+        if( result ) {
+            query = " (" + color_on + dispkeys->substr( 0, 1 ) + color_off + "/" + dispkeys->substr( 1,
+                    1 ) + ")";
+        } else {
+            query = " (" + dispkeys->substr( 0, 1 ) + "/" + color_on + dispkeys->substr( 1,
+                    1 ) + color_off + ")";
+        }
+        // Query string without color tags, color tags are *not* ignored by utf8_width,
+        // it gives the wrong width instead.
+        std::string query_nc = " (" + dispkeys->substr( 0, 1 ) + "/" + dispkeys->substr( 1, 1 ) + ")";
+        if( force_uc ) {
+            query += ucwarning;
+            query_nc += ucwarning;
+        }
+
+        if( !w ) {
+            // -2 to keep space for the border, use query without color tags so
+            // utf8_width uses the same text as it will be printed in the window.
+            std::vector<std::string> textformatted = foldstring( text + query_nc, FULL_SCREEN_WIDTH - 2 );
+            for( auto &s : textformatted ) {
+                win_width = std::max( win_width, utf8_width( remove_color_tags( s ) ) );
+            }
+            w = newwin( textformatted.size() + 2, win_width + 2, ( TERMY - 3 ) / 2,
+                        std::max( TERMX - win_width, 0 ) / 2 );
+            draw_border( w );
+        }
+        fold_and_print( w, 1, 1, win_width, c_ltred, text + query );
+        wrefresh( w );
+
+        // TODO: use input context
+        ch = inp_mngr.get_input_event().get_first_input();
+    };
+
+    werase( w );
+    wrefresh( w );
+    delwin( w );
+    refresh();
+    return ( ( ch != KEY_ESCAPE ) && result );
+}
+
+bool query_int( int &result, const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+
     string_input_popup popup;
     popup.title( text );
     popup.text( "" ).only_digits( true );
@@ -603,56 +719,132 @@ bool query_int( int &result, const std::string &text )
     return true;
 }
 
-std::vector<std::string> get_hotkeys( const std::string &s )
+long popup_getkey( const char *mes, ... )
 {
-    std::vector<std::string> hotkeys;
-    size_t start = s.find_first_of( '<' );
-    size_t end = s.find_first_of( '>' );
-    if( start != std::string::npos && end != std::string::npos ) {
-        // hotkeys separated by '|' inside '<' and '>', for example "<e|E|?>"
-        size_t lastsep = start;
-        size_t sep = s.find_first_of( '|', start );
-        while( sep < end ) {
-            hotkeys.push_back( s.substr( lastsep + 1, sep - lastsep - 1 ) );
-            lastsep = sep;
-            sep = s.find_first_of( '|', sep + 1 );
-        }
-        hotkeys.push_back( s.substr( lastsep + 1, end - lastsep - 1 ) );
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    return popup( text, PF_GET_KEY );
+}
+
+// compatibility stub for uimenu(cancelable, mes, options)
+int menu_vec( bool cancelable, const char *mes,
+              const std::vector<std::string> options )
+{
+    return ( int )uimenu( cancelable, mes, options );
+}
+
+int menu_vec( bool cancelable, const char *mes,
+              const std::vector<std::string> &options,
+              const std::string &hotkeys_override )
+{
+    return ( int )uimenu( cancelable, mes, options, hotkeys_override );
+}
+
+// compatibility stub for uimenu(cancelable, mes, ...)
+int menu( bool const cancelable, const char *const mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    std::vector<std::string> options;
+    while( char const *const tmp = va_arg( ap, char * ) ) {
+        options.push_back( tmp );
     }
-    return hotkeys;
+    va_end( ap );
+    return ( uimenu( cancelable, mes, options ) );
+}
+
+void popup_top( const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    popup( text, PF_ON_TOP );
 }
 
 long popup( const std::string &text, PopupFlags flags )
 {
-    query_popup pop;
-    pop.message( "%s", text );
-    if( flags & PF_GET_KEY ) {
-        pop.allow_anykey( true );
-    } else {
-        pop.allow_cancel( true );
+    if( test_mode ) {
+        std::cerr << text << std::endl;
+        return 0;
     }
 
-    if( flags & PF_FULLSCREEN ) {
-        pop.full_screen( true );
-    } else if( flags & PF_ON_TOP ) {
-        pop.on_top( true );
-    }
-
-    if( flags & PF_NO_WAIT ) {
-        pop.show();
-        return UNKNOWN_UNICODE;
-    } else {
-        pop.context( "POPUP_WAIT" );
-        const auto &res = pop.query();
-        if( res.evt.type == CATA_INPUT_KEYBOARD ) {
-            return res.evt.get_first_input();
-        } else {
-            return UNKNOWN_UNICODE;
+    int width = 0;
+    int height = 2;
+    std::vector<std::string> folded = foldstring( text, FULL_SCREEN_WIDTH - 2 );
+    height += folded.size();
+    for( auto &elem : folded ) {
+        int cw = utf8_width( elem, true );
+        if( cw > width ) {
+            width = cw;
         }
     }
+    width += 2;
+    WINDOW *w;
+    if( ( flags & PF_FULLSCREEN ) != 0 ) {
+        w = newwin( FULL_SCREEN_HEIGHT, FULL_SCREEN_WIDTH,
+                    ( TERMY > FULL_SCREEN_HEIGHT ) ? ( TERMY - FULL_SCREEN_HEIGHT ) / 2 : 0,
+                    ( TERMX > FULL_SCREEN_WIDTH ) ? ( TERMX - FULL_SCREEN_WIDTH ) / 2 : 0 );
+    } else if( ( flags & PF_ON_TOP ) == 0 ) {
+        if( height > FULL_SCREEN_HEIGHT ) {
+            height = FULL_SCREEN_HEIGHT;
+        }
+        w = newwin( height, width, ( TERMY - ( height + 1 ) ) / 2,
+                    ( TERMX > width ) ? ( TERMX - width ) / 2 : 0 );
+    } else {
+        w = newwin( height, width, 0, ( TERMX > width ) ? ( TERMX - width ) / 2 : 0 );
+    }
+    draw_border( w );
+
+    for( size_t i = 0; i < folded.size(); ++i ) {
+        fold_and_print( w, i + 1, 1, width, c_white, "%s", folded[i].c_str() );
+    }
+
+    long ch = 0;
+    // Don't wait if not required.
+    while( ( flags & PF_NO_WAIT ) == 0 ) {
+        wrefresh( w );
+        // TODO: use input context
+        ch = inp_mngr.get_input_event().get_first_input();
+        if( ( flags & PF_GET_KEY ) != 0 ) {
+            // return the first key that got pressed.
+            werase( w );
+            break;
+        }
+        if( ch == ' ' || ch == '\n' || ch == KEY_ESCAPE ) {
+            // The usuall "escape menu/window" keys.
+            werase( w );
+            break;
+        }
+    }
+    wrefresh( w );
+    delwin( w );
+    refresh();
+    refresh_display();
+    return ch;
 }
 
-void popup_status( const char *const title, const std::string &fmt )
+void popup( const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    popup( text, PF_NONE );
+}
+
+void popup_nowait( const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    popup( text, PF_NO_WAIT );
+}
+
+void popup_status( const char *title, const char *msg, ... )
 {
     std::string text;
     if( !test_mode && title != nullptr ) {
@@ -660,7 +852,21 @@ void popup_status( const char *const title, const std::string &fmt )
         text += "\n";
     }
 
+    va_list ap;
+    va_start( ap, msg );
+    const std::string fmt = vstring_format( msg, ap );
+    va_end( ap );
+
     popup( text + fmt, PF_NO_WAIT );
+}
+
+void full_screen_popup( const char *mes, ... )
+{
+    va_list ap;
+    va_start( ap, mes );
+    const std::string text = vstring_format( mes, ap );
+    va_end( ap );
+    popup( text, PF_FULLSCREEN );
 }
 
 //note that passing in iteminfo instances with sType == "DESCRIPTION" does special things
@@ -668,14 +874,12 @@ void popup_status( const char *const title, const std::string &fmt )
 // well frack, half the game uses it so: optional (int)selected argument causes entry highlight, and enter to return entry's key. Also it now returns int
 //@param without_getch don't wait getch, return = (int)' ';
 input_event draw_item_info( const int iLeft, const int iWidth, const int iTop, const int iHeight,
-                            const std::string &sItemName, const std::string &sTypeName,
-                            std::vector<iteminfo> &vItemDisplay, std::vector<iteminfo> &vItemCompare,
-                            int &selected, const bool without_getch, const bool without_border,
-                            const bool handle_scrolling, const bool scrollbar_left, const bool use_full_win,
-                            const unsigned int padding )
+                    const std::string sItemName, const std::string sTypeName,
+                    std::vector<iteminfo> &vItemDisplay, std::vector<iteminfo> &vItemCompare,
+                    int &selected, const bool without_getch, const bool without_border,
+                    const bool handle_scrolling, const bool scrollbar_left, const bool use_full_win )
 {
-    catacurses::window win = catacurses::newwin( iHeight, iWidth, iTop + VIEW_OFFSET_Y,
-                             iLeft + VIEW_OFFSET_X );
+    WINDOW *win = newwin( iHeight, iWidth, iTop + VIEW_OFFSET_Y, iLeft + VIEW_OFFSET_X );
 
 #ifdef TILES
     clear_window_area( win );
@@ -684,8 +888,8 @@ input_event draw_item_info( const int iLeft, const int iWidth, const int iTop, c
     wrefresh( win );
 
     const auto result = draw_item_info( win, sItemName, sTypeName, vItemDisplay, vItemCompare,
-                                        selected, without_getch, without_border, handle_scrolling, scrollbar_left, use_full_win,
-                                        padding );
+                                        selected, without_getch, without_border, handle_scrolling, scrollbar_left, use_full_win );
+    delwin( win );
     return result;
 }
 
@@ -713,10 +917,10 @@ std::string replace_colors( std::string text )
 {
     static const std::vector<std::pair<std::string, std::string>> info_colors = {
         {"info", get_all_colors().get_name( c_cyan )},
-        {"stat", get_all_colors().get_name( c_light_blue )},
+        {"stat", get_all_colors().get_name( c_ltblue )},
         {"header", get_all_colors().get_name( c_magenta )},
         {"bold", get_all_colors().get_name( c_white )},
-        {"dark", get_all_colors().get_name( c_dark_gray )},
+        {"dark", get_all_colors().get_name( c_dkgray )},
         {"good", get_all_colors().get_name( c_green )},
         {"bad", get_all_colors().get_name( c_red )},
         {"neutral", get_all_colors().get_name( c_yellow )}
@@ -730,8 +934,7 @@ std::string replace_colors( std::string text )
     return text;
 }
 
-void draw_item_filter_rules( const catacurses::window &win, int starty, int height,
-                             item_filter_type type )
+void draw_item_filter_rules( WINDOW *win, int starty, int height, item_filter_type type )
 {
     // Clear every row, but the leftmost/rightmost pixels intact.
     const int len = getmaxx( win ) - 2;
@@ -741,11 +944,10 @@ void draw_item_filter_rules( const catacurses::window &win, int starty, int heig
 
     // Not static so that language changes are correctly handled
     const std::array<std::string, 3> intros = {{
-            _( "Type part of an item's name to filter it." ),
-            _( "Type part of an item's name to move nearby items to the bottom." ),
-            _( "Type part of an item's name to move nearby items to the top." )
-        }
-    };
+        _( "Type part of an item's name to filter it." ),
+        _( "Type part of an item's name to move nearby items to the bottom." ),
+        _( "Type part of an item's name to move nearby items to the top." )
+    }};
     const int tab_idx = int( type ) - int( item_filter_type::FIRST );
     starty += 1 + fold_and_print( win, starty, 1, len, c_white, intros[tab_idx] );
 
@@ -754,16 +956,14 @@ void draw_item_filter_rules( const catacurses::window &win, int starty, int heig
     starty += 1 + fold_and_print( win, starty, 1, len, c_white, _( "Example: back,flash,aid, ,band" ) );
 
     if( type == item_filter_type::FILTER ) {
-        starty += fold_and_print( win, starty, 1, len, c_white,
-                                  _( "To exclude items, place - in front." ) );
+        starty += fold_and_print( win, starty, 1, len, c_white, _( "To exclude items, place - in front." ) );
         //~ An example of how to exclude items with - when filtering items.
         starty += 1 + fold_and_print( win, starty, 1, len, c_white, _( "Example: -pipe,-chunk,-steel" ) );
     }
 
-    starty += fold_and_print( win, starty, 1, len, c_white,
-                              _( "Search [c]ategory, [m]aterial, or [q]uality:" ) );
+    starty += fold_and_print( win, starty, 1, len, c_white, _( "Search [c]ategory or [m]aterial:" ) );
     //~ An example of how to filter items based on category or material.
-    fold_and_print( win, starty, 1, len, c_white, _( "Example: c:food,m:iron,q:hammering" ) );
+    fold_and_print( win, starty, 1, len, c_white, _( "Example: c:food,m:iron" ) );
     wrefresh( win );
 }
 
@@ -771,27 +971,30 @@ std::string format_item_info( const std::vector<iteminfo> &vItemDisplay,
                               const std::vector<iteminfo> &vItemCompare )
 {
     std::ostringstream buffer;
-    bool bIsNewLine = true;
+    bool bStartNewLine = true;
 
     for( size_t i = 0; i < vItemDisplay.size(); i++ ) {
         if( vItemDisplay[i].sType == "DESCRIPTION" ) {
-            // Always start a new line for sType == "DESCRIPTION"
-            if( !bIsNewLine ) {
-                buffer << "\n";
-            }
-            if( vItemDisplay[i].bDrawName ) {
-                buffer << vItemDisplay[i].sName;
-            }
-            // Always end with a linebreak for sType == "DESCRIPTION"
             buffer << "\n";
-            bIsNewLine = true;
-        } else {
             if( vItemDisplay[i].bDrawName ) {
                 buffer << vItemDisplay[i].sName;
+            }
+        } else {
+            if( bStartNewLine ) {
+                if( vItemDisplay[i].bDrawName ) {
+                    buffer << "\n" << vItemDisplay[i].sName;
+                }
+                bStartNewLine = false;
+            } else {
+                if( vItemDisplay[i].bDrawName ) {
+                    buffer << vItemDisplay[i].sName;
+                }
             }
 
+            std::string sPlus = vItemDisplay[i].sPlus;
             std::string sFmt = vItemDisplay[i].sFmt;
-            std::string sPost;
+            std::string sNum = " ";
+            std::string sPost = "";
 
             //A bit tricky, find %d and split the string
             size_t pos = sFmt.find( "<num>" );
@@ -809,33 +1012,37 @@ std::string format_item_info( const std::vector<iteminfo> &vItemDisplay,
                         if( vItemDisplay[i].sName == k.sName && vItemDisplay[i].sType == k.sType ) {
                             if( vItemDisplay[i].dValue > k.dValue - .1 &&
                                 vItemDisplay[i].dValue < k.dValue + .1 ) {
-                                thisColor = c_light_gray;
+                                thisColor = c_ltgray;
                             } else if( vItemDisplay[i].dValue > k.dValue ) {
                                 if( vItemDisplay[i].bLowerIsBetter ) {
-                                    thisColor = c_light_red;
+                                    thisColor = c_ltred;
                                 } else {
-                                    thisColor = c_light_green;
+                                    thisColor = c_ltgreen;
                                 }
                             } else if( vItemDisplay[i].dValue < k.dValue ) {
                                 if( vItemDisplay[i].bLowerIsBetter ) {
-                                    thisColor = c_light_green;
+                                    thisColor = c_ltgreen;
                                 } else {
-                                    thisColor = c_light_red;
+                                    thisColor = c_ltred;
                                 }
                             }
                             break;
                         }
                     }
                 }
-                buffer << "<color_" << string_from_color( thisColor ) << ">"
-                       << vItemDisplay[i].sValue
-                       << "</color>";
+                buffer << sPlus << "<color_" << string_from_color( thisColor ) << ">";
+                if( vItemDisplay[i].is_int == true ) {
+                    buffer << string_format( "%.0f", vItemDisplay[i].dValue );
+                } else {
+                    buffer << string_format( "%.2f", vItemDisplay[i].dValue );
+                }
+                buffer << "</color>";
             }
             buffer << sPost;
 
-            // Set bIsNewLine in case the next line should always start in a new line
-            if( ( bIsNewLine = vItemDisplay[i].bNewLine ) ) {
+            if( vItemDisplay[i].bNewLine ) {
                 buffer << "\n";
+                bStartNewLine = true;
             }
         }
     }
@@ -843,24 +1050,20 @@ std::string format_item_info( const std::vector<iteminfo> &vItemDisplay,
     return buffer.str();
 }
 
-input_event draw_item_info( const catacurses::window &win, const std::string &sItemName,
-                            const std::string &sTypeName,
-                            std::vector<iteminfo> &vItemDisplay, std::vector<iteminfo> &vItemCompare,
-                            int &selected, const bool without_getch, const bool without_border,
-                            const bool handle_scrolling, const bool scrollbar_left, const bool use_full_win,
-                            const unsigned int padding )
+input_event draw_item_info( WINDOW *win, const std::string sItemName, const std::string sTypeName,
+                    std::vector<iteminfo> &vItemDisplay, std::vector<iteminfo> &vItemCompare,
+                    int &selected, const bool without_getch, const bool without_border,
+                    const bool handle_scrolling, const bool scrollbar_left, const bool use_full_win )
 {
     std::ostringstream buffer;
     int line_num = use_full_win || without_border ? 0 : 1;
-    if( !sItemName.empty() ) {
+    if( sItemName != "" ) {
         buffer << sItemName << "\n";
     }
-    if( sItemName != sTypeName && !sTypeName.empty() ) {
+    if( sItemName != sTypeName && sTypeName != "" ) {
         buffer << sTypeName << "\n";
     }
-    for( unsigned int i = 0; i < padding; i++ ) {
-        buffer << "\n";
-    }
+    buffer << " \n"; //This space is required, otherwise it won't make an empty line.
 
     buffer << format_item_info( vItemDisplay, vItemCompare );
 
@@ -883,7 +1086,7 @@ input_event draw_item_info( const catacurses::window &win, const std::string &sI
                 selected = iLines - height;
             }
 
-            fold_and_print_from( win, line_num, b, width - 1, selected, c_light_gray, buffer.str() );
+            fold_and_print_from( win, line_num, b, width - 1, selected, c_ltgray, buffer.str() );
 
             draw_scrollbar( win, selected, height, iLines, ( without_border && use_full_win ? 0 : 1 ),
                             scrollbar_left ? 0 : getmaxx( win ) - 1, BORDER_COLOR, true );
@@ -900,7 +1103,7 @@ input_event draw_item_info( const catacurses::window &win, const std::string &sI
 
         // TODO: use input context
         result = inp_mngr.get_input_event();
-        const int ch = static_cast<int>( result.get_first_input() );
+        const int ch = ( int )result.get_first_input();
         if( handle_scrolling && ch == KEY_PPAGE ) {
             selected--;
             werase( win );
@@ -1027,7 +1230,7 @@ std::vector<size_t> get_tag_positions( const std::string &s )
 }
 
 // utf-8 version
-std::string word_rewrap( const std::string &in, int width, const uint32_t split )
+std::string word_rewrap( const std::string &in, int width )
 {
     std::ostringstream o;
 
@@ -1038,9 +1241,8 @@ std::string word_rewrap( const std::string &in, int width, const uint32_t split 
     int lastout = 0;
     const char *instr = in.c_str();
     bool skipping_tag = false;
-    bool just_wrapped = false;
 
-    for( int j = 0, x = 0; j < static_cast<int>( in.size() ); ) {
+    for( int j = 0, x = 0; j < ( int )in.size(); ) {
         const char *ins = instr + j;
         int len = ANY_LENGTH;
         uint32_t uc = UTF8_getch( &ins, &len );
@@ -1048,14 +1250,13 @@ std::string word_rewrap( const std::string &in, int width, const uint32_t split 
         if( uc == '<' ) { // maybe skip non-printing tag
             std::vector<size_t>::iterator it;
             for( it = tag_positions.begin(); it != tag_positions.end(); ++it ) {
-                if( static_cast<int>( *it ) == j ) {
+                if( ( int )*it == j ) {
                     skipping_tag = true;
                     break;
                 }
             }
         }
 
-        const int old_j = j;
         j += ANY_LENGTH - len;
 
         if( skipping_tag ) {
@@ -1065,26 +1266,9 @@ std::string word_rewrap( const std::string &in, int width, const uint32_t split 
             continue;
         }
 
-        if( just_wrapped && uc == ' ' ) { // ignore spaces after wrapping
-            lastwb = lastout = j;
-            continue;
-        }
-
         x += mk_wcwidth( uc );
 
-        if( uc == split || uc >= 0x2E80 ) { // param split (default ' ') or CJK characters
-            if( x <= width ) {
-                lastwb = j; // break after character
-            } else {
-                lastwb = old_j; // break before character
-            }
-        }
-
         if( x > width ) {
-            if( lastwb == lastout ) {
-                lastwb = old_j;
-            }
-            // old_j may equal to lastout, this checks it and ensures there's at least one character in the line.
             if( lastwb == lastout ) {
                 lastwb = j;
             }
@@ -1094,70 +1278,60 @@ std::string word_rewrap( const std::string &in, int width, const uint32_t split 
             o << '\n';
             x = 0;
             lastout = j = lastwb;
-            just_wrapped = true;
-        } else {
-            just_wrapped = false;
+        }
+
+        if( uc == ' ' || uc >= 0x2E80 ) {
+            lastwb = j;
         }
     }
-    for( int k = lastout; k < static_cast<int>( in.size() ); k++ ) {
+    for( int k = lastout; k < ( int )in.size(); k++ ) {
         o << in[k];
     }
 
     return o.str();
 }
 
-void draw_tab( const catacurses::window &w, int iOffsetX, const std::string &sText, bool bSelected )
+void draw_tab( WINDOW *w, int iOffsetX, std::string sText, bool bSelected )
 {
     int iOffsetXRight = iOffsetX + utf8_width( sText ) + 1;
 
-    mvwputch( w, 0, iOffsetX,      c_light_gray, LINE_OXXO ); // |^
-    mvwputch( w, 0, iOffsetXRight, c_light_gray, LINE_OOXX ); // ^|
-    mvwputch( w, 1, iOffsetX,      c_light_gray, LINE_XOXO ); // |
-    mvwputch( w, 1, iOffsetXRight, c_light_gray, LINE_XOXO ); // |
+    mvwputch( w, 0, iOffsetX,      c_ltgray, LINE_OXXO ); // |^
+    mvwputch( w, 0, iOffsetXRight, c_ltgray, LINE_OOXX ); // ^|
+    mvwputch( w, 1, iOffsetX,      c_ltgray, LINE_XOXO ); // |
+    mvwputch( w, 1, iOffsetXRight, c_ltgray, LINE_XOXO ); // |
 
-    mvwprintz( w, 1, iOffsetX + 1, ( bSelected ) ? h_light_gray : c_light_gray, sText );
+    mvwprintz( w, 1, iOffsetX + 1, ( bSelected ) ? h_ltgray : c_ltgray, "%s", sText.c_str() );
 
     for( int i = iOffsetX + 1; i < iOffsetXRight; i++ ) {
-        mvwputch( w, 0, i, c_light_gray, LINE_OXOX );  // -
+        mvwputch( w, 0, i, c_ltgray, LINE_OXOX );  // -
     }
 
     if( bSelected ) {
-        mvwputch( w, 1, iOffsetX - 1,      h_light_gray, '<' );
-        mvwputch( w, 1, iOffsetXRight + 1, h_light_gray, '>' );
+        mvwputch( w, 1, iOffsetX - 1,      h_ltgray, '<' );
+        mvwputch( w, 1, iOffsetXRight + 1, h_ltgray, '>' );
 
         for( int i = iOffsetX + 1; i < iOffsetXRight; i++ ) {
             mvwputch( w, 2, i, c_black, ' ' );
         }
 
-        mvwputch( w, 2, iOffsetX,      c_light_gray, LINE_XOOX ); // _|
-        mvwputch( w, 2, iOffsetXRight, c_light_gray, LINE_XXOO ); // |_
+        mvwputch( w, 2, iOffsetX,      c_ltgray, LINE_XOOX ); // _|
+        mvwputch( w, 2, iOffsetXRight, c_ltgray, LINE_XXOO ); // |_
 
     } else {
-        mvwputch( w, 2, iOffsetX,      c_light_gray, LINE_XXOX ); // _|_
-        mvwputch( w, 2, iOffsetXRight, c_light_gray, LINE_XXOX ); // _|_
+        mvwputch( w, 2, iOffsetX,      c_ltgray, LINE_XXOX ); // _|_
+        mvwputch( w, 2, iOffsetXRight, c_ltgray, LINE_XXOX ); // _|_
     }
 }
 
-void draw_subtab( const catacurses::window &w, int iOffsetX, const std::string &sText,
-                  bool bSelected,
-                  bool bDecorate, bool bDisabled )
+void draw_subtab( WINDOW *w, int iOffsetX, std::string sText, bool bSelected, bool bDecorate )
 {
     int iOffsetXRight = iOffsetX + utf8_width( sText ) + 1;
 
-    if( ! bDisabled ) {
-        mvwprintz( w, 0, iOffsetX + 1, ( bSelected ) ? h_light_gray : c_light_gray, sText );
-    } else {
-        mvwprintz( w, 0, iOffsetX + 1, ( bSelected ) ? h_dark_gray : c_dark_gray, sText );
-    }
+    mvwprintz( w, 0, iOffsetX + 1, ( bSelected ) ? h_ltgray : c_ltgray, "%s", sText.c_str() );
 
     if( bSelected ) {
-        if( ! bDisabled ) {
-            mvwputch( w, 0, iOffsetX - bDecorate,      h_light_gray, '<' );
-            mvwputch( w, 0, iOffsetXRight + bDecorate, h_light_gray, '>' );
-        } else {
-            mvwputch( w, 0, iOffsetX - bDecorate,      h_dark_gray, '<' );
-            mvwputch( w, 0, iOffsetXRight + bDecorate, h_dark_gray, '>' );
-        }
+        mvwputch( w, 0, iOffsetX - bDecorate,      h_ltgray, '<' );
+        mvwputch( w, 0, iOffsetXRight + bDecorate, h_ltgray, '>' );
 
         for( int i = iOffsetX + 1; bDecorate && i < iOffsetXRight; i++ ) {
             mvwputch( w, 1, i, c_black, ' ' );
@@ -1166,7 +1340,7 @@ void draw_subtab( const catacurses::window &w, int iOffsetX, const std::string &
 }
 
 /**
- * Draw a scrollbar (Legacy function, use class scrollbar instead!)
+ * Draw a scrollbar
  * @param window Pointer of window to draw on
  * @param iCurrentLine The starting line or currently selected line out of the iNumLines lines
  * @param iContentHeight Height of the scrollbar
@@ -1178,120 +1352,42 @@ void draw_subtab( const catacurses::window &w, int iOffsetX, const std::string &
  *   If false, iCurrentLine can be from 0 to iNumLines - 1.
  *   If true, iCurrentLine can be at most iNumLines - iContentHeight.
  **/
-void draw_scrollbar( const catacurses::window &window, const int iCurrentLine,
-                     const int iContentHeight, const int iNumLines, const int iOffsetY, const int iOffsetX,
+void draw_scrollbar( WINDOW *window, const int iCurrentLine, const int iContentHeight,
+                     const int iNumLines, const int iOffsetY, const int iOffsetX,
                      nc_color bar_color, const bool bDoNotScrollToEnd )
 {
-    scrollbar()
-    .offset_x( iOffsetX )
-    .offset_y( iOffsetY )
-    .content_size( iNumLines )
-    .viewport_pos( iCurrentLine )
-    .viewport_size( iContentHeight )
-    .slot_color( bar_color )
-    .scroll_to_last( !bDoNotScrollToEnd )
-    .apply( window );
-}
+    if( iContentHeight >= iNumLines ) {
+        //scrollbar is not required
+        bar_color = BORDER_COLOR;
+    }
 
-scrollbar::scrollbar()
-    : offset_x_v( 0 ), offset_y_v( 0 ), content_size_v( 0 ),
-      viewport_pos_v( 0 ), viewport_size_v( 0 ),
-      border_color_v( BORDER_COLOR ), arrow_color_v( c_light_green ),
-      slot_color_v( c_white ), bar_color_v( c_cyan_cyan ), scroll_to_last_v( false )
-{
-}
+    //Clear previous scrollbar
+    for( int i = iOffsetY; i < iOffsetY + iContentHeight; i++ ) {
+        mvwputch( window, i, iOffsetX, bar_color, LINE_XOXO );
+    }
 
-scrollbar &scrollbar::offset_x( int offx )
-{
-    offset_x_v = offx;
-    return *this;
-}
+    if( iContentHeight >= iNumLines ) {
+        return;
+    }
 
-scrollbar &scrollbar::offset_y( int offy )
-{
-    offset_y_v = offy;
-    return *this;
-}
+    if( iNumLines > 0 ) {
+        mvwputch( window, iOffsetY, iOffsetX, c_ltgreen, '^' );
+        mvwputch( window, iOffsetY + iContentHeight - 1, iOffsetX, c_ltgreen, 'v' );
 
-scrollbar &scrollbar::content_size( int csize )
-{
-    content_size_v = csize;
-    return *this;
-}
+        int iSBHeight = std::max( 2, ( ( iContentHeight - 2 ) * iContentHeight ) / iNumLines );
+        int iScrollableLines = bDoNotScrollToEnd ? iNumLines - iContentHeight + 1 : iNumLines;
 
-scrollbar &scrollbar::viewport_pos( int vpos )
-{
-    viewport_pos_v = vpos;
-    return *this;
-}
-
-scrollbar &scrollbar::viewport_size( int vsize )
-{
-    viewport_size_v = vsize;
-    return *this;
-}
-
-scrollbar &scrollbar::border_color( nc_color border_c )
-{
-    border_color_v = border_c;
-    return *this;
-}
-
-scrollbar &scrollbar::arrow_color( nc_color arrow_c )
-{
-    arrow_color_v = arrow_c;
-    return *this;
-}
-
-scrollbar &scrollbar::slot_color( nc_color slot_c )
-{
-    slot_color_v = slot_c;
-    return *this;
-}
-
-scrollbar &scrollbar::bar_color( nc_color bar_c )
-{
-    bar_color_v = bar_c;
-    return *this;
-}
-
-scrollbar &scrollbar::scroll_to_last( bool scr2last )
-{
-    scroll_to_last_v = scr2last;
-    return *this;
-}
-
-void scrollbar::apply( const catacurses::window &window )
-{
-    if( viewport_size_v >= content_size_v || content_size_v <= 0 ) {
-        // scrollbar not needed, fill output area with borders
-        for( int i = offset_y_v; i < offset_y_v + viewport_size_v; ++i ) {
-            mvwputch( window, i, offset_x_v, border_color_v, LINE_XOXO );
-        }
-    } else {
-        mvwputch( window, offset_y_v, offset_x_v, arrow_color_v, '^' );
-        mvwputch( window, offset_y_v + viewport_size_v - 1, offset_x_v, arrow_color_v, 'v' );
-
-        int slot_size = viewport_size_v - 2;
-        int bar_size = std::max( 2, slot_size * viewport_size_v / content_size_v );
-        int scrollable_size = scroll_to_last_v ? content_size_v : content_size_v - viewport_size_v + 1;
-
-        int bar_start, bar_end;
-        if( viewport_pos_v == 0 ) {
-            bar_start = 0;
-        } else if( scrollable_size > 2 ) {
-            bar_start = ( slot_size - 1 - bar_size ) * ( viewport_pos_v - 1 ) / ( scrollable_size - 2 ) + 1;
+        int iStartY;
+        if( iCurrentLine == 0 ) {
+            iStartY = -1;
+        } else if( iScrollableLines > 2 ) {
+            iStartY = ( ( iContentHeight - 3 - iSBHeight ) * ( iCurrentLine - 1 ) ) / ( iScrollableLines - 2 );
         } else {
-            bar_start = slot_size - bar_size;
+            iStartY = iContentHeight - 3 - iSBHeight;
         }
-        bar_end = bar_start + bar_size;
 
-        for( int i = 0; i < slot_size; ++i ) {
-            if( i >= bar_start && i < bar_end ) {
-                mvwputch( window, offset_y_v + 1 + i, offset_x_v, bar_color_v, LINE_XOXO );
-            } else {
-                mvwputch( window, offset_y_v + 1 + i, offset_x_v, slot_color_v, LINE_XOXO );
-            }
+        for( int i = 0; i < iSBHeight; i++ ) {
+            mvwputch( window, i + iOffsetY + 2 + iStartY, iOffsetX, c_cyan_cyan, LINE_XOXO );
         }
     }
 }
@@ -1299,17 +1395,22 @@ void scrollbar::apply( const catacurses::window &window )
 void calcStartPos( int &iStartPos, const int iCurrentLine, const int iContentHeight,
                    const int iNumEntries )
 {
-    if( iNumEntries <= iContentHeight ) {
-        iStartPos = 0;
-    } else if( get_option<bool>( "MENU_SCROLL" ) ) {
-        iStartPos = iCurrentLine - ( iContentHeight - 1 ) / 2;
-        if( iStartPos < 0 ) {
+    if( get_option<bool>( "MENU_SCROLL" ) ) {
+        if( iNumEntries > iContentHeight ) {
+            iStartPos = iCurrentLine - ( iContentHeight - 1 ) / 2;
+
+            if( iStartPos < 0 ) {
+                iStartPos = 0;
+            } else if( iStartPos + iContentHeight > iNumEntries ) {
+                iStartPos = iNumEntries - iContentHeight;
+            }
+        } else {
             iStartPos = 0;
-        } else if( iStartPos + iContentHeight > iNumEntries ) {
-            iStartPos = iNumEntries - iContentHeight;
         }
     } else {
-        if( iCurrentLine < iStartPos ) {
+        if( iNumEntries <= iContentHeight ) {
+            iStartPos = 0;
+        } else if( iCurrentLine < iStartPos ) {
             iStartPos = iCurrentLine;
         } else if( iCurrentLine >= iStartPos + iContentHeight ) {
             iStartPos = 1 + iCurrentLine - iContentHeight;
@@ -1317,7 +1418,7 @@ void calcStartPos( int &iStartPos, const int iCurrentLine, const int iContentHei
     }
 }
 
-catacurses::window w_hit_animation;
+WINDOW *w_hit_animation = NULL;
 void hit_animation( int iX, int iY, nc_color cColor, const std::string &cTile )
 {
     /*
@@ -1325,13 +1426,16 @@ void hit_animation( int iX, int iY, nc_color cColor, const std::string &cTile )
     mvwputch(w, iY + VIEW_OFFSET_Y, iX + VIEW_OFFSET_X, cColor, cTile);
     */
 
-    catacurses::window w_hit = catacurses::newwin( 1, 1, iY + VIEW_OFFSET_Y, iX + VIEW_OFFSET_X );
-    if( !w_hit ) {
+    WINDOW *w_hit = newwin( 1, 1, iY + VIEW_OFFSET_Y, iX + VIEW_OFFSET_X );
+    if( w_hit == NULL ) {
         return; //we passed in negative values (semi-expected), so let's not segfault
+    }
+    if( w_hit_animation != nullptr ) {
+        delwin( w_hit_animation );
     }
     w_hit_animation = w_hit;
 
-    mvwprintz( w_hit, 0, 0, cColor, cTile );
+    mvwprintz( w_hit, 0, 0, cColor, "%s", cTile.c_str() );
     wrefresh( w_hit );
 
     inp_mngr.set_timeout( get_option<int>( "ANIMATION_DELAY" ) );
@@ -1341,22 +1445,15 @@ void hit_animation( int iX, int iY, nc_color cColor, const std::string &cTile )
 }
 
 #if defined(_MSC_VER)
-std::string cata::string_formatter::raw_string_format( const char *const format, ... )
+std::string vstring_format( char const *const format, va_list args )
 {
-    va_list args;
-    va_start( args, format );
-
-    va_list args_copy;
-    va_copy( args_copy, args );
-    const int result = _vscprintf_p( format, args_copy );
-    va_end( args_copy );
+    int const result = _vscprintf_p( format, args );
     if( result == -1 ) {
-        throw std::runtime_error( "Bad format string for printf: \"" + std::string( format ) + "\"" );
+        return std::string( "Bad format string for printf." );
     }
 
     std::string buffer( result, '\0' );
     _vsprintf_p( &buffer[0], result + 1, format, args ); //+1 for string's null
-    va_end( args );
 
     return buffer;
 }
@@ -1393,7 +1490,8 @@ std::string rewrite_vsnprintf( const char *msg )
             break;
         }
 
-        // Write portion of the string that was before %
+
+        // Write porition of the string that was before %
         rewritten_msg << std::string( msg, ptr );
         rewritten_msg_optimised << std::string( msg, ptr );
 
@@ -1465,11 +1563,8 @@ std::string rewrite_vsnprintf( const char *msg )
     return rewritten_msg.str();
 }
 
-std::string cata::string_formatter::raw_string_format( const char *format, ... )
+std::string vstring_format( char const *format, va_list args )
 {
-    va_list args;
-    va_start( args, format );
-
     errno = 0; // Clear errno before trying
     std::vector<char> buffer( 1024, '\0' );
 
@@ -1479,11 +1574,11 @@ std::string cata::string_formatter::raw_string_format( const char *format, ... )
 #endif
 
     for( ;; ) {
-        const size_t buffer_size = buffer.size();
+        size_t const buffer_size = buffer.size();
 
         va_list args_copy;
         va_copy( args_copy, args );
-        const int result = vsnprintf( &buffer[0], buffer_size, format, args_copy );
+        int const result = vsnprintf( &buffer[0], buffer_size, format, args_copy );
         va_end( args_copy );
 
         // No error, and the buffer is big enough; we're done.
@@ -1495,31 +1590,53 @@ std::string cata::string_formatter::raw_string_format( const char *format, ... )
         // Some non-standard versions return -1 to indicate a bigger buffer is needed.
         // Some of the latter set errno to ERANGE at the same time.
         if( result < 0 && errno && errno != ERANGE ) {
-            throw std::runtime_error( "Bad format string for printf: \"" + std::string( format ) + "\"" );
+            return std::string( "Bad format string for printf." );
         }
 
         // Looks like we need to grow... bigger, definitely bigger.
         buffer.resize( buffer_size * 2 );
     }
 
-    va_end( args );
     return std::string( &buffer[0] );
 }
 #endif
+
+std::string string_format( const char *pattern, ... )
+{
+    va_list ap;
+    va_start( ap, pattern );
+    std::string result = vstring_format( pattern, ap );
+    va_end( ap );
+    return result;
+}
+
+std::string vstring_format( std::string const &pattern, va_list argptr )
+{
+    return vstring_format( pattern.c_str(), argptr );
+}
+
+std::string string_format( std::string pattern, ... )
+{
+    va_list ap;
+    va_start( ap, pattern );
+    std::string result = vstring_format( pattern.c_str(), ap );
+    va_end( ap );
+    return result;
+}
 
 void replace_name_tags( std::string &input )
 {
     // these need to replace each tag with a new randomly generated name
     while( input.find( "<full_name>" ) != std::string::npos ) {
-        replace_substring( input, "<full_name>", Name::get( nameIsFullName ),
+        replace_substring( input, "<full_name>", NameGenerator::generator().getName( nameIsFullName ),
                            false );
     }
     while( input.find( "<family_name>" ) != std::string::npos ) {
-        replace_substring( input, "<family_name>", Name::get( nameIsFamilyName ),
+        replace_substring( input, "<family_name>", NameGenerator::generator().getName( nameIsFamilyName ),
                            false );
     }
     while( input.find( "<given_name>" ) != std::string::npos ) {
-        replace_substring( input, "<given_name>", Name::get( nameIsGivenName ),
+        replace_substring( input, "<given_name>", NameGenerator::generator().getName( nameIsGivenName ),
                            false );
     }
 }
@@ -1570,7 +1687,7 @@ std::string rm_prefix( std::string str, char c1, char c2 )
 // draw a menu-item-like string with highlighted shortcut character
 // Example: <w>ield, m<o>ve
 // returns: output length (in console cells)
-size_t shortcut_print( const catacurses::window &w, int y, int x, nc_color text_color,
+size_t shortcut_print( WINDOW *w, int y, int x, nc_color text_color,
                        nc_color shortcut_color, const std::string &fmt )
 {
     wmove( w, y, x );
@@ -1578,58 +1695,54 @@ size_t shortcut_print( const catacurses::window &w, int y, int x, nc_color text_
 }
 
 //same as above, from current position
-size_t shortcut_print( const catacurses::window &w, nc_color text_color, nc_color shortcut_color,
+size_t shortcut_print( WINDOW *w, nc_color text_color, nc_color shortcut_color,
                        const std::string &fmt )
-{
-    std::string text = shortcut_text( shortcut_color, fmt );
-    print_colored_text( w, -1, -1, text_color, text_color, text );
-
-    return utf8_width( remove_color_tags( text ) );
-}
-
-//generate colorcoded shortcut text
-std::string shortcut_text( nc_color shortcut_color, const std::string &fmt )
 {
     size_t pos = fmt.find_first_of( '<' );
     size_t pos_end = fmt.find_first_of( '>' );
+    size_t sep = std::min( fmt.find_first_of( '|', pos ), pos_end );
+    size_t len = 0;
     if( pos_end != std::string::npos && pos < pos_end ) {
-        size_t sep = std::min( fmt.find_first_of( '|', pos ), pos_end );
         std::string prestring = fmt.substr( 0, pos );
         std::string poststring = fmt.substr( pos_end + 1, std::string::npos );
         std::string shortcut = fmt.substr( pos + 1, sep - pos - 1 );
-
-        return string_format( "%s<color_%s>%s</color>%s", prestring,
-                              string_from_color( shortcut_color ).c_str(),
-                              shortcut, poststring );
+        wprintz( w, text_color, "%s", prestring.c_str() );
+        wprintz( w, shortcut_color, "%s", shortcut.c_str() );
+        wprintz( w, text_color, "%s", poststring.c_str() );
+        len = utf8_width( prestring.c_str() );
+        len += utf8_width( shortcut.c_str() );
+        len += utf8_width( poststring.c_str() );
+    } else {
+        // no shortcut?
+        wprintz( w, text_color, "%s", fmt.c_str() );
+        len = utf8_width( fmt.c_str() );
     }
-
-    // no shortcut?
-    return fmt;
+    return len;
 }
 
-const std::pair<std::string, nc_color> &
+std::pair<std::string, nc_color> const &
 get_hp_bar( const int cur_hp, const int max_hp, const bool is_mon )
 {
     using pair_t = std::pair<std::string, nc_color>;
-    static const std::array<pair_t, 12> strings {
+    static std::array<pair_t, 12> const strings {
         {
             //~ creature health bars
             pair_t { R"(|||||)", c_green },
             pair_t { R"(||||\)", c_green },
-            pair_t { R"(||||)",  c_light_green },
-            pair_t { R"(|||\)",  c_light_green },
+            pair_t { R"(||||)",  c_ltgreen },
+            pair_t { R"(|||\)",  c_ltgreen },
             pair_t { R"(|||)",   c_yellow },
             pair_t { R"(||\)",   c_yellow },
-            pair_t { R"(||)",    c_light_red },
-            pair_t { R"(|\)",    c_light_red },
+            pair_t { R"(||)",    c_ltred },
+            pair_t { R"(|\)",    c_ltred },
             pair_t { R"(|)",     c_red },
             pair_t { R"(\)",     c_red },
             pair_t { R"(:)",     c_red },
-            pair_t { R"(-----)", c_light_gray },
+            pair_t { R"(-----)", c_ltgray },
         }
     };
 
-    const double ratio = static_cast<double>( cur_hp ) / ( max_hp ? max_hp : 1 );
+    double const ratio = static_cast<double>( cur_hp ) / ( max_hp ? max_hp : 1 );
     return ( ratio >= 1.0 )            ? strings[0]  :
            ( ratio >= 0.9 && !is_mon ) ? strings[1]  :
            ( ratio >= 0.8 )            ? strings[2]  :
@@ -1643,24 +1756,28 @@ get_hp_bar( const int cur_hp, const int max_hp, const bool is_mon )
            ( ratio >  0.0 )            ? strings[10] : strings[11];
 }
 
-std::pair<std::string, nc_color> get_light_level( const float light )
+std::pair<std::string, nc_color> const &get_light_level( const float light )
 {
     using pair_t = std::pair<std::string, nc_color>;
-    static const std::array<pair_t, 6> strings {
+    static std::array<pair_t, 6> const strings {
         {
-            pair_t {translate_marker( "unknown" ), c_pink},
-            pair_t {translate_marker( "bright" ), c_yellow},
-            pair_t {translate_marker( "cloudy" ), c_white},
-            pair_t {translate_marker( "shady" ), c_light_gray},
-            pair_t {translate_marker( "dark" ), c_dark_gray},
-            pair_t {translate_marker( "very dark" ), c_black_white}
+            pair_t {_( "unknown" ), c_pink},
+            pair_t {_( "bright" ), c_yellow},
+            pair_t {_( "cloudy" ), c_white},
+            pair_t {_( "shady" ), c_ltgray},
+            pair_t {_( "dark" ), c_dkgray},
+            pair_t {_( "very dark" ), c_black_white}
         }
     };
-    // Avoid magic number
-    static const int maximum_light_level = static_cast< int >( strings.size() ) - 1;
-    const int light_level = clamp( static_cast< int >( ceil( light ) ), 0, maximum_light_level );
-    const size_t array_index = static_cast< size_t >( light_level );
-    return pair_t{ _( strings[array_index].first.c_str() ), strings[array_index].second };
+
+    const int light_level = ceil( light );
+    if( light_level < 0 ) {
+        return strings[0];
+    } else if( light_level > 5 ) {
+        return strings[5];
+    }
+
+    return strings[light_level];
 }
 
 std::string get_labeled_bar( const double val, const int width, const std::string &label, char c )
@@ -1680,7 +1797,7 @@ std::string get_labeled_bar( const double val, const int width, const std::strin
  * @param w The window to draw this in, the whole widow is used.
  * @param data Text data to fill.
  */
-void display_table( const catacurses::window &w, const std::string &title, int columns,
+void display_table( WINDOW *w, const std::string &title, int columns,
                     const std::vector<std::string> &data )
 {
     const int width = getmaxx( w ) - 2; // -2 for border
@@ -1688,15 +1805,13 @@ void display_table( const catacurses::window &w, const std::string &title, int c
     const int col_width = width / columns;
     int offset = 0;
 
-#ifdef __ANDROID__
-    // no bindings, but give it its own input context so stale buttons don't hang around.
-    input_context ctxt( "DISPLAY_TABLE" );
-#endif
+    const int title_length = utf8_width( title );
     for( ;; ) {
         werase( w );
-        draw_border( w, BORDER_COLOR, title, c_white );
+        draw_border( w );
+        mvwprintz( w, 1, ( width - title_length ) / 2, c_white, "%s", title.c_str() );
         for( int i = 0; i < rows * columns; i++ ) {
-            if( i + offset * columns >= static_cast<int>( data.size() ) ) {
+            if( i + offset * columns >= ( int )data.size() ) {
                 break;
             }
             const int x = 2 + ( i % columns ) * col_width;
@@ -1707,7 +1822,7 @@ void display_table( const catacurses::window &w, const std::string &title, int c
         wrefresh( w );
         // TODO: use input context
         int ch = inp_mngr.get_input_event().get_first_input();
-        if( ch == KEY_DOWN && ( ( offset + 1 ) * columns ) < static_cast<int>( data.size() ) ) {
+        if( ch == KEY_DOWN && ( ( offset + 1 ) * columns ) < ( int )data.size() ) {
             offset++;
         } else if( ch == KEY_UP && offset > 0 ) {
             offset--;
@@ -1718,9 +1833,9 @@ void display_table( const catacurses::window &w, const std::string &title, int c
 }
 
 scrollingcombattext::cSCT::cSCT( const int p_iPosX, const int p_iPosY, const direction p_oDir,
-                                 const std::string &p_sText, const game_message_type p_gmt,
-                                 const std::string &p_sText2, const game_message_type p_gmt2,
-                                 const std::string &p_sType )
+                                 const std::string p_sText, const game_message_type p_gmt,
+                                 const std::string p_sText2, const game_message_type p_gmt2,
+                                 const std::string p_sType )
 {
     iPosX = p_iPosX;
     iPosY = p_iPosY;
@@ -1764,9 +1879,9 @@ scrollingcombattext::cSCT::cSCT( const int p_iPosX, const int p_iPosY, const dir
 }
 
 void scrollingcombattext::add( const int p_iPosX, const int p_iPosY, direction p_oDir,
-                               const std::string &p_sText, const game_message_type p_gmt,
-                               const std::string &p_sText2, const game_message_type p_gmt2,
-                               const std::string &p_sType )
+                               const std::string p_sText, const game_message_type p_gmt,
+                               const std::string p_sText2, const game_message_type p_gmt2,
+                               const std::string p_sType )
 {
     if( get_option<bool>( "ANIMATION_SCT" ) ) {
 
@@ -1800,7 +1915,7 @@ void scrollingcombattext::add( const int p_iPosX, const int p_iPosY, direction p
         }
 
         // in tiles, SCT that scroll downwards are inserted at the beginning of the vector to prevent
-        // oversize ASCII tiles overdrawing messages below them.
+        // oversize ascii tiles overdrawing messages below them.
         if( tiled && ( p_oDir == SOUTHWEST || p_oDir == SOUTH ||
                        p_oDir == ( iso_mode ? WEST : SOUTHEAST ) ) ) {
 
@@ -1828,7 +1943,7 @@ void scrollingcombattext::add( const int p_iPosX, const int p_iPosY, direction p
     }
 }
 
-std::string scrollingcombattext::cSCT::getText( const std::string &type ) const
+std::string scrollingcombattext::cSCT::getText( std::string const &type ) const
 {
     if( !sText2.empty() ) {
         if( oDir == oUpLeft || oDir == oDownLeft || oDir == oLeft ) {
@@ -1852,7 +1967,7 @@ std::string scrollingcombattext::cSCT::getText( const std::string &type ) const
     return sText;
 }
 
-game_message_type scrollingcombattext::cSCT::getMsgType( const std::string &type ) const
+game_message_type scrollingcombattext::cSCT::getMsgType( std::string const &type ) const
 {
     if( !sText2.empty() ) {
         if( oDir == oUpLeft || oDir == oDownLeft || oDir == oLeft ) {
@@ -1949,32 +2064,61 @@ void scrollingcombattext::removeCreatureHP()
 
 nc_color msgtype_to_color( const game_message_type type, const bool bOldMsg )
 {
-    static const std::map<game_message_type, std::pair<nc_color, nc_color>> colors {
-        {m_good,     {c_light_green, c_green}},
-        {m_bad,      {c_light_red,   c_red}},
+    static std::map<game_message_type, std::pair<nc_color, nc_color>> const colors {
+        {
+            m_good,     {c_ltgreen, c_green}
+        },
+        {m_bad,      {c_ltred,   c_red}},
         {m_mixed,    {c_pink,    c_magenta}},
         {m_warning,  {c_yellow,  c_brown}},
-        {m_info,     {c_light_blue,  c_blue}},
-        {m_neutral,  {c_white,   c_light_gray}},
-        {m_debug,    {c_white,   c_light_gray}},
+        {m_info,     {c_ltblue,  c_blue}},
+        {m_neutral,  {c_white,   c_ltgray}},
+        {m_debug,    {c_white,   c_ltgray}},
         {m_headshot, {c_pink,    c_magenta}},
         {m_critical, {c_yellow,  c_brown}},
-        {m_grazing,  {c_light_blue,  c_blue}}
+        {m_grazing,  {c_ltblue,  c_blue}}
     };
 
-    const auto it = colors.find( type );
+    auto const it = colors.find( type );
     if( it == std::end( colors ) ) {
-        return bOldMsg ? c_light_gray : c_white;
+        return bOldMsg ? c_ltgray : c_white;
     }
 
     return bOldMsg ? it->second.second : it->second.first;
+}
+
+int msgtype_to_tilecolor( const game_message_type type, const bool bOldMsg )
+{
+    int iBold = ( bOldMsg ) ? 0 : 8;
+
+    switch( type ) {
+        case m_good:
+            return iBold + COLOR_GREEN;
+        case m_bad:
+            return iBold + COLOR_RED;
+        case m_mixed:
+        case m_headshot:
+            return iBold + COLOR_MAGENTA;
+        case m_neutral:
+            return iBold + COLOR_WHITE;
+        case m_warning:
+        case m_critical:
+            return iBold + COLOR_YELLOW;
+        case m_info:
+        case m_grazing:
+            return iBold + COLOR_BLUE;
+        default:
+            break;
+    }
+
+    return -1;
 }
 
 /**
  * Match text containing wildcards (*)
  * @param text_in Text to check
  * @param pattern_in Pattern to check text_in against
- * Case insensitive search
+ * Case insenitive search
  * Possible patterns:
  * *
  * wooD
@@ -1985,46 +2129,47 @@ nc_color msgtype_to_color( const game_message_type type, const bool bOldMsg )
  * *wood*arrow
  * *wood*hard* *x*y*z*arrow*
  **/
-bool wildcard_match( const std::string &text_in, const std::string &pattern_in )
+bool wildcard_match(const std::string &text_in, const std::string &pattern_in)
 {
     std::string text = text_in;
 
-    if( text.empty() ) {
+    if (text == "") {
         return false;
-    } else if( text == "*" ) {
+    } else if (text == "*") {
         return true;
     }
 
     int pos;
-    std::vector<std::string> pattern = string_split( wildcard_trim_rule( pattern_in ), '*' );
+    std::vector<std::string> pattern;
 
-    if( pattern.size() == 1 ) { // no * found
-        return ( text.length() == pattern[0].length() && ci_find_substr( text, pattern[0] ) != -1 );
+    wildcard_split(wildcard_trim_rule(pattern_in), '*', pattern);
+
+    if (pattern.size() == 1) { // no * found
+        return (text.length() == pattern[0].length() && ci_find_substr(text, pattern[0]) != -1);
     }
 
-    for( auto it = pattern.begin(); it != pattern.end(); ++it ) {
-        if( it == pattern.begin() && *it != "" ) {
-            if( text.length() < it->length() ||
-                ci_find_substr( text.substr( 0, it->length() ), *it ) == -1 ) {
+    for (auto it = pattern.begin(); it != pattern.end(); ++it) {
+        if (it == pattern.begin() && *it != "") {
+            if (text.length() < it->length() ||
+                ci_find_substr(text.substr(0, it->length()), *it) == -1) {
                 return false;
             }
 
-            text = text.substr( it->length(), text.length() - it->length() );
-        } else if( it == pattern.end() - 1 && *it != "" ) {
-            if( text.length() < it->length() ||
-                ci_find_substr( text.substr( text.length() - it->length(),
-                                             it->length() ), *it ) == -1 ) {
+            text = text.substr(it->length(), text.length() - it->length());
+        } else if (it == pattern.end() - 1 && *it != "") {
+            if (text.length() < it->length() ||
+                ci_find_substr(text.substr(text.length() - it->length(),
+                                            it->length()), *it) == -1) {
                 return false;
             }
         } else {
-            if( !( *it ).empty() ) {
-                pos = ci_find_substr( text, *it );
-                if( pos == -1 ) {
+            if (!(*it).empty()) {
+                pos = ci_find_substr(text, *it);
+                if (pos == -1) {
                     return false;
                 }
 
-                text = text.substr( pos + static_cast<int>( it->length() ),
-                                    static_cast<int>( text.length() ) - pos );
+                text = text.substr(pos + (int)it->length(), (int)text.length() - pos);
             }
         }
     }
@@ -2032,49 +2177,48 @@ bool wildcard_match( const std::string &text_in, const std::string &pattern_in )
     return true;
 }
 
-std::string wildcard_trim_rule( const std::string &pattern_in )
+std::string wildcard_trim_rule(const std::string &pattern_in)
 {
     std::string pattern = pattern_in;
-    size_t pos = pattern.find( "**" );
+    size_t pos = pattern.find("**");
 
     //Remove all double ** in pattern
-    while( pos != std::string::npos ) {
-        pattern = pattern.substr( 0, pos ) + pattern.substr( pos + 1, pattern.length() - pos - 1 );
-        pos = pattern.find( "**" );
+    while(pos != std::string::npos) {
+        pattern = pattern.substr(0, pos) + pattern.substr(pos + 1, pattern.length() - pos - 1);
+        pos = pattern.find("**");
     }
 
     return pattern;
 }
 
-std::vector<std::string> string_split( const std::string &text_in, char delim_in )
+std::vector<std::string> &wildcard_split(const std::string &text_in, char delim_in, std::vector<std::string> &elems_in)
 {
-    std::vector<std::string> elems;
-
+    elems_in.clear();
     if( text_in.empty() ) {
-        return elems; // Well, that was easy.
+        return elems_in; // Well, that was easy.
     }
 
-    std::stringstream ss( text_in );
+    std::stringstream ss(text_in);
     std::string item;
-    while( std::getline( ss, item, delim_in ) ) {
-        elems.push_back( item );
+    while (std::getline(ss, item, delim_in)) {
+        elems_in.push_back(item);
     }
 
-    if( text_in[text_in.length() - 1] == delim_in ) {
-        elems.push_back( "" );
+    if ( text_in.substr(text_in.length() - 1, 1) == "*") {
+        elems_in.push_back("");
     }
 
-    return elems;
+    return elems_in;
 }
 
 // find substring (case insensitive)
 int ci_find_substr( const std::string &str1, const std::string &str2, const std::locale &loc )
 {
     std::string::const_iterator it = std::search( str1.begin(), str1.end(), str2.begin(), str2.end(),
-    [&]( const char str1_in, const char str2_in ) {
-        return std::toupper( str1_in, loc ) == std::toupper( str2_in, loc );
-    } );
-    if( it != str1.end() ) {
+                                [&] ( const char str1_in, const char str2_in ) {
+                                    return std::toupper( str1_in, loc ) == std::toupper( str2_in, loc );
+                                } );
+    if ( it != str1.end() ) {
         return it - str1.begin();
     } else {
         return -1;    // not found
@@ -2091,12 +2235,11 @@ std::string format_volume( const units::volume &volume )
 
 /**
 * Convert, clamp, round up and format a volume,
-* taking into account the specified width (0 for unlimited space),
+* taking into account the specified width (0 for inlimited space),
 * optionally returning a flag that indicate if the value was truncated to fit the width,
-* optionally returning the formatted value as double.
+* optionally returning the formated value as double.
 */
-std::string format_volume( const units::volume &volume, int width, bool *out_truncated,
-                           double *out_value )
+std::string format_volume( const units::volume &volume, int width, bool *out_truncated, double *out_value )
 {
     // convert and get the units preferred scale
     int scale = 0;
@@ -2107,7 +2250,7 @@ std::string format_volume( const units::volume &volume, int width, bool *out_tru
     }
     // round up
     value = round_up( value, scale );
-    if( out_value != nullptr ) {
+    if( out_value != NULL ) {
         *out_value = value;
     }
     // format
@@ -2125,8 +2268,6 @@ std::string format_volume( const units::volume &volume, int width, bool *out_tru
 
 // In non-SDL mode, width/height is just what's specified in the menu
 #if !defined(TILES)
-// We need to override these for Windows console resizing
-#if !(defined _WIN32 || defined __WIN32__)
 int get_terminal_width()
 {
     int width = get_option<int>( "TERMINAL_X" );
@@ -2137,11 +2278,14 @@ int get_terminal_height()
 {
     return get_option<int>( "TERMINAL_Y" );
 }
-#endif
 
 bool is_draw_tiles_mode()
 {
     return false;
+}
+
+void play_music( std::string )
+{
 }
 
 void refresh_display()
@@ -2149,17 +2293,3 @@ void refresh_display()
 }
 #endif
 
-void mvwprintz( const catacurses::window &w, const int y, const int x, const nc_color &FG,
-                const std::string &text )
-{
-    wattron( w, FG );
-    mvwprintw( w, y, x, text );
-    wattroff( w, FG );
-}
-
-void wprintz( const catacurses::window &w, const nc_color &FG, const std::string &text )
-{
-    wattron( w, FG );
-    wprintw( w, text );
-    wattroff( w, FG );
-}

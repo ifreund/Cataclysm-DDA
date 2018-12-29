@@ -2,18 +2,21 @@
 
 #include "debug.h"
 #include "game_constants.h"
-#include "inventory.h"
 #include "item.h"
 #include "itype.h"
+#include "inventory.h"
 #include "output.h"
 #include "player.h"
 #include "recipe.h"
 #include "requirements.h"
 #include "translations.h"
-#include "uistate.h"
+#include "crafting.h"
 
+#include <list>
 #include <sstream>
-#include <algorithm>
+#include <string>
+#include <vector>
+
 
 template<typename CompType>
 std::string comp_selection<CompType>::nname() const
@@ -54,9 +57,10 @@ void craft_command::execute()
         }
     }
 
+    const auto needs = rec->requirements();
+
     if( need_selections ) {
         item_selections.clear();
-        const auto needs = rec->requirements();
         for( const auto &it : needs.get_components() ) {
             comp_selection<item_comp> is = crafter->select_item_component( it, batch_size, map_inv, true );
             if( is.use_from == cancel ) {
@@ -77,29 +81,15 @@ void craft_command::execute()
     }
 
     auto type = activity_id( is_long ? "ACT_LONGCRAFT" : "ACT_CRAFT" );
-    auto activity = player_activity( type, crafter->base_time_to_craft( *rec, batch_size ), -1, INT_MIN,
-                                     rec->ident().str() );
+    auto activity = player_activity( type, crafter->time_to_craft( *rec, batch_size ), -1, INT_MIN,
+                                     rec->ident() );
     activity.values.push_back( batch_size );
-    activity.values.push_back( calendar::turn );
-    activity.coords.push_back( crafter->pos() );
 
     crafter->assign_activity( activity );
 
     /* legacy support for lua bindings to last_batch and lastrecipe */
     crafter->last_batch = batch_size;
     crafter->lastrecipe = rec->ident();
-
-    const auto iter = std::find( uistate.recent_recipes.begin(), uistate.recent_recipes.end(),
-                                 rec->ident() );
-    if( iter != uistate.recent_recipes.end() ) {
-        uistate.recent_recipes.erase( iter );
-    }
-
-    uistate.recent_recipes.push_back( rec->ident() );
-
-    if( uistate.recent_recipes.size() > 20 ) {
-        uistate.recent_recipes.erase( uistate.recent_recipes.begin() );
-    }
 }
 
 /** Does a string join with ', ' of the components in the passed vector and inserts into 'str' */
@@ -129,7 +119,14 @@ bool craft_command::query_continue( const std::vector<comp_selection<item_comp>>
         component_list_string( ss, missing_tools );
     }
 
-    return query_yn( ss.str() );
+    std::vector<std::string> options;
+    options.push_back( _( "Yes" ) );
+    options.push_back( _( "No" ) );
+
+    // We NEED a copy.
+    const std::string str = ss.str();
+    int selection = menu_vec( true, str.c_str(), options );
+    return selection == 1;
 }
 
 std::list<item> craft_command::consume_components()

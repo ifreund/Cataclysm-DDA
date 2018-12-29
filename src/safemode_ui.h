@@ -1,18 +1,17 @@
 #pragma once
-#ifndef SAFEMODE_UI_H
-#define SAFEMODE_UI_H
+#ifndef SEFEMODE_UI_H
+#define SEFEMODE_UI_H
 
-#include "creature.h"
-#include "enums.h"
-
-#include <string>
 #include <unordered_map>
+#include <string>
 #include <vector>
+#include <locale>
+#include <algorithm>
+#include "json.h"
+#include "enums.h"
+#include "creature.h"
 
-class JsonIn;
-class JsonOut;
-
-class safemode
+class safemode : public JsonSerializer, public JsonDeserializer
 {
     private:
         enum Tabs : int {
@@ -30,7 +29,7 @@ class safemode
                 Creature::Attitude attitude;
                 int proximity;
 
-                rules_class() : active( false ), whitelist( false ), attitude( Creature::A_HOSTILE ),
+                rules_class() : rule(), active( false ), whitelist( false ), attitude( Creature::A_HOSTILE ),
                     proximity( 0 ) {}
                 rules_class( std::string rule_in, bool active_in, bool whitelist_in, Creature::Attitude attitude_in,
                              int proximity_in ) : rule( rule_in ), active( active_in ), whitelist( whitelist_in ),
@@ -72,7 +71,7 @@ class safemode
 
         void create_rules();
         void add_rules( std::vector<rules_class> &rules_in );
-        void set_rule( const rules_class rule_in, const std::string &name_in, rule_state rs_in );
+        void set_rule( const rules_class rule_in, const std::string name_in, rule_state rs_in );
 
     public:
         std::string lastmon_whitelist;
@@ -97,8 +96,9 @@ class safemode
 
         bool empty() const;
 
-        void serialize( JsonOut &json ) const;
-        void deserialize( JsonIn &jsin );
+        using JsonSerializer::serialize;
+        void serialize( JsonOut &json ) const override;
+        void deserialize( JsonIn &jsin ) override;
 };
 
 safemode &get_safemode();

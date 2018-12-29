@@ -4,8 +4,10 @@
 
 #include "string_id.h"
 
-#include <set>
 #include <vector>
+#include <string>
+#include <map>
+#include <set>
 
 class overmap;
 class tinymap;
@@ -15,8 +17,6 @@ struct tripoint;
 class start_location;
 template<typename T>
 class generic_factory;
-struct MonsterGroup;
-using mongroup_id = string_id<MonsterGroup>;
 
 class start_location
 {
@@ -46,7 +46,7 @@ class start_location
          */
         void prepare_map( const tripoint &omtstart ) const;
         /**
-         * Place the player somewhere in the reality bubble (g->m).
+         * Place the player somewher ein th reality bubble (g->m).
          */
         void place_player( player &u ) const;
         /**
@@ -64,13 +64,6 @@ class start_location
         void add_map_special( const tripoint &omtstart, const std::string &map_special ) const;
 
         void handle_heli_crash( player &u ) const;
-
-        /**
-         * Adds surround start monsters.
-         * @param expected_points Expected value of "monster points" (map tiles times density from @ref map::place_spawns).
-         */
-        void surround_with_monsters( const tripoint &omtstart, const mongroup_id &type,
-                                     float expected_points ) const;
     private:
         friend class generic_factory<start_location>;
         string_id<start_location> id;

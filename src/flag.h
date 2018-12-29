@@ -2,10 +2,9 @@
 #ifndef FLAG_H
 #define FLAG_H
 
-#include <set>
-#include <string>
+#include "json.h"
 
-class JsonObject;
+#include <set>
 
 class json_flag
 {

@@ -2,14 +2,14 @@
 #ifndef LUA_CONSOLE_H
 #define LUA_CONSOLE_H
 
-#include "cursesdef.h"
 #include "output.h"
+#include "cursesdef.h"
 
 #include <string>
-#include <utility>
 #include <vector>
+#include <utility>
 
-class nc_color;
+typedef int nc_color;
 
 class lua_console
 {
@@ -21,11 +21,12 @@ class lua_console
         const int width = TERMX;
         const int lines = 10;
 
-        catacurses::window cWin;
-        catacurses::window iWin;
+        WINDOW *cWin;
+        WINDOW *iWin;
 
         std::vector<std::pair<std::string, nc_color>> text_stack;
         std::string get_input();
+        void print( std::string text );
         void draw();
 
         bool done = false;

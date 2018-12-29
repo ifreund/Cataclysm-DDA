@@ -2,18 +2,13 @@
 #ifndef ADVANCED_INV_H
 #define ADVANCED_INV_H
 
-#include "cursesdef.h"
+#include "cursesdef.h" // WINDOW
 #include "enums.h"
-#include "units.h"
 
-#include <array>
-#include <functional>
-#include <list>
-#include <map>
 #include <string>
-#include <vector>
+#include <array>
 
-class uilist;
+class uimenu;
 class vehicle;
 class item;
 
@@ -57,7 +52,7 @@ struct sort_case_insensitive_less : public std::binary_function< char, char, boo
 
 /**
  * Cancels ongoing move all action.
- * @todo: Make this not needed.
+ * @todo Make this not needed.
  */
 void cancel_aim_processing();
 
@@ -91,7 +86,7 @@ struct advanced_inv_area {
     std::string flags;
     // total volume and weight of items currently there
     units::volume volume;
-    units::mass weight;
+    int weight;
     // maximal count / volume of items there.
     int max_size;
 
@@ -128,6 +123,7 @@ struct advanced_inv_area {
 
 // see item_factory.h
 class item_category;
+
 
 /**
  * Entry that is displayed in a adv. inv. pane. It can either contain a
@@ -172,7 +168,7 @@ struct advanced_inv_listitem {
     /**
      * The weight of all the items in this stack, used for sorting.
      */
-    units::mass weight;
+    int weight;
     /**
      * The item category, or the category header.
      */
@@ -259,7 +255,7 @@ class advanced_inventory_pane
          */
         int index;
         advanced_inv_sortby sortby;
-        catacurses::window window;
+        WINDOW *window;
         std::vector<advanced_inv_listitem> items;
         /**
          * The current filter string.
@@ -288,7 +284,7 @@ class advanced_inventory_pane
         /**
          * Same as the other, but checks the real item.
          */
-        bool is_filtered( const item &it ) const;
+        bool is_filtered( const item *it ) const;
         /**
          * Scroll @ref index, by given offset, set redraw to true,
          * @param offset Must not be 0.
@@ -342,12 +338,11 @@ class advanced_inventory
         const int min_w_width;
         const int max_w_width;
 
-        // swap the panes and windows via std::swap()
+        // swap the panes and WINDOW pointers via std::swap()
         void swap_panes();
 
         // minimap that displays things around character
-        catacurses::window minimap;
-        catacurses::window mm_border;
+        WINDOW *minimap, *mm_border;
         const int minimap_width  = 3;
         const int minimap_height = 3;
         void draw_minimap();
@@ -386,9 +381,9 @@ class advanced_inventory
         static const advanced_inventory_pane null_pane;
         std::array<advanced_inv_area, NUM_AIM_LOCATIONS> squares;
 
-        catacurses::window head;
-        catacurses::window left_window;
-        catacurses::window right_window;
+        WINDOW *head;
+        WINDOW *left_window;
+        WINDOW *right_window;
 
         bool exit;
 
@@ -407,7 +402,7 @@ class advanced_inventory
         void recalc_pane( side p );
         void redraw_pane( side p );
         // Returns the x coordinate where the header started. The header is
-        // displayed right of it, everything left of it is till free.
+        // displayed right right of it, everything left of it is till free.
         int print_header( advanced_inventory_pane &pane, aim_location sel );
         void init();
         /**
@@ -418,7 +413,7 @@ class advanced_inventory
          * @return true if the action did refer to an location (which has been
          * stored in ret), false otherwise.
          */
-        static bool get_square( const std::string &action, aim_location &ret );
+        static bool get_square( const std::string action, aim_location &ret );
         /**
          * Show the sort-by menu and change the sorting of this pane accordingly.
          * @return whether the sort order was actually changed.
@@ -469,7 +464,7 @@ class advanced_inventory
         bool query_charges( aim_location destarea, const advanced_inv_listitem &sitem,
                             const std::string &action, long &amount );
 
-        void menu_square( uilist &menu );
+        void menu_square( uimenu *menu );
 
         static char get_location_key( aim_location area );
         static char get_direction_key( aim_location area );

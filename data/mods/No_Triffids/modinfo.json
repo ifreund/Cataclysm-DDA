@@ -15,6 +15,13 @@
   },
   {
     "type": "MONSTER_BLACKLIST",
-    "monsters": [ "mon_triffid", "mon_triffid_young", "mon_fungal_fighter", "mon_vinebeast", "mon_triffid_queen", "mon_triffid_heart" ]
+    "monsters": [
+      "mon_triffid",
+      "mon_triffid_young",
+      "mon_fungal_fighter",
+      "mon_vinebeast",
+      "mon_triffid_queen",
+      "mon_triffid_heart"
+    ]
   }
 ]

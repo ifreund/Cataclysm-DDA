@@ -30,8 +30,10 @@
                     "helmet_larmor",
                     "backpack",
                     "shield_wooden_large",
-                    "waterskin",
-                    "khopesh"
+                    "waterskin"
+                ],
+                "entries": [
+                    { "item": "khopesh", "container-item": "scabbard" }
                 ]
             },
             "male": [

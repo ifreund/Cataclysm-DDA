@@ -1,5 +1,7 @@
 #!/bin/sh
 
+oldpwd=`pwd`
+
 if [ ! -d lang/po ]
 then
     if [ -d ../lang/po ]
@@ -16,6 +18,7 @@ echo "> Extracting strings from json"
 if ! lang/extract_json_strings.py
 then
     echo "Error in extract_json_strings.py. Aborting"
+    cd $oldpwd
     exit 1
 fi
 
@@ -26,16 +29,14 @@ xgettext --default-domain="cataclysm-dda" \
          --sort-by-file \
          --output="lang/po/cataclysm-dda.pot" \
          --keyword="_" \
+         --keyword="gettext_noop" \
          --keyword="pgettext:1c,2" \
          --keyword="ngettext:1,2" \
-         --keyword="translate_marker" \
-         --keyword="translate_marker_context:1c,2" \
-         --keyword="translation:1,1t" \
-         --keyword="translation:1c,2,2t" \
          --from-code="UTF-8" \
-         src/*.cpp src/*.h lang/json/*.py
+         src/*.cpp src/*.h lang/json/*.py lang/extra/android/*.cpp
 if [ $? -ne 0 ]; then
     echo "Error in xgettext. Aborting"
+    cd $oldpwd
     exit 1
 fi
 
@@ -54,9 +55,10 @@ fi
 
 # strip line-numbers from the .pot file
 echo "> Stripping .pot file from unneeded comments"
-if ! lang/strip_line_numbers.py lang/po/cataclysm-dda.pot
+if ! python lang/strip_line_numbers.py lang/po/cataclysm-dda.pot
 then
     echo "Error in strip_line_numbers.py. Aborting"
+    cd $oldpwd
     exit 1
 fi
 
@@ -65,15 +67,18 @@ echo "> Testing to compile the .pot file"
 if ! msgfmt -c -o /dev/null lang/po/cataclysm-dda.pot
 then
     echo "Updated pot file contain gettext errors. Aborting."
+    cd $oldpwd
     exit 1
 fi
 
 # Check for broken Unicode symbols
 echo "> Checking for wrong Unicode symbols"
-if ! lang/unicode_check.py lang/po/cataclysm-dda.pot
+if ! python lang/unicode_check.py lang/po/cataclysm-dda.pot
 then
     echo "Updated pot file contain broken Unicode symbols. Aborting."
+    cd $oldpwd
     exit 1
 fi
 
 echo "ALL DONE!"
+cd $oldpwd

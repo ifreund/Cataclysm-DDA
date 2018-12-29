@@ -6,7 +6,6 @@
 #include "json.h"
 #include "translations.h"
 
-#include <map>
 #include <unordered_map>
 
 // activity_type functions
@@ -38,9 +37,9 @@ void activity_type::load( JsonObject &jo )
     result.id_ = activity_id( jo.get_string( "id" ) );
     assign( jo, "rooted", result.rooted_, true );
     result.stop_phrase_ = _( jo.get_string( "stop_phrase" ).c_str() );
+    assign( jo, "abortable", result.abortable_, true );
     assign( jo, "suspendable", result.suspendable_, true );
     assign( jo, "no_resume", result.no_resume_, true );
-    assign( jo, "refuel_fires", result.refuel_fires, false );
 
     result.based_on_ = io::string_to_enum_look_up( based_on_type_values, jo.get_string( "based_on" ) );
 
@@ -54,7 +53,7 @@ void activity_type::load( JsonObject &jo )
 void activity_type::check_consistency()
 {
     for( const auto &pair : activity_type_all ) {
-        if( pair.second.stop_phrase_.empty() ) {
+        if( pair.second.stop_phrase_ == "" ) {
             debugmsg( "%s doesn't have a stop phrase", pair.first.c_str() );
         }
         if( pair.second.based_on_ == based_on_type::NEITHER &&

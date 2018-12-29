@@ -2,7 +2,6 @@
   {
     "id": "blunderbuss",
     "type": "GUN",
-    "reload_noise_volume": 10,
     "name": "blunderbuss",
     "name_plural": "blunderbusses",
     "description": "A homemade version of a crude precursor to the shotgun.  Able to fire just about anything you put down the barrel, but it will degrade pretty quick.",
@@ -16,7 +15,7 @@
     "color": "brown",
     "ammo": "blunderbuss",
     "skill": "shotgun",
-    "dispersion": 855,
+    "dispersion": 555,
     "durability": 3,
     "loudness": 200,
     "clip_size": 1,

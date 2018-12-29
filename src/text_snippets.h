@@ -1,14 +1,12 @@
 #pragma once
-#ifndef TEXT_SNIPPETS_H
-#define TEXT_SNIPPETS_H
+#ifndef TEXT_SNIPPET_H
+#define TEXT_SNIPPET_H
+
+#include "json.h"
 
 #include <map>
-#include <string>
 #include <unordered_map>
-#include <vector>
-
-class JsonObject;
-class JsonArray;
+#include <string>
 
 class snippet_library
 {

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+oldpwd=`pwd`
+
 if [ ! -d lang/po ]
 then
     if [ -d ../lang/po ]
@@ -52,13 +54,16 @@ then
     for n in $@
     do
         echo "updating lang/po/${n}.po"
-        msgmerge --sort-by-file --no-fuzzy-matching lang/po/${n}.po lang/po/cataclysm-dda.pot | msgattrib --sort-by-file --no-obsolete -o lang/po/${n}.po
+        msgmerge -F -U lang/po/${n}.po lang/po/cataclysm-dda.pot
     done
 # otherwise merge lang/po/cataclysm-dda.pot with all .po files in lang/po
 else
     for f in lang/po/*.po
     do
         echo "updating $f"
-        msgmerge --sort-by-file --no-fuzzy-matching $f lang/po/cataclysm-dda.pot | msgattrib --sort-by-file --no-obsolete -o $f
+        msgmerge -F -U $f lang/po/cataclysm-dda.pot
     done
 fi
+
+cd $oldpwd
+

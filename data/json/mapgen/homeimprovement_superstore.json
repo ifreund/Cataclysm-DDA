@@ -6,18 +6,11 @@
       [ "hat_hard", 100 ],
       [ "boots", 50 ],
       [ "glasses_safety", 50 ],
-      [ "tool_belt", 25 ],
-      [ "elbow_pads", 50 ],
-      [ "knee_pads", 50 ],
-      [ "gloves_work", 45 ],
-      [ "ear_plugs", 75 ],
-      [ "mask_dust", 75 ],
-      [ "miner_hat", 5 ],
-      [ "cleansuit", 5 ]
+      [ "tool_belt", 25 ]
     ]
   },
   {
-    "id": "vending_drink_home_impr",
+    "id": "vending_drink",
     "type": "item_group",
     "items": [
       [ "water_clean", 50 ],
@@ -172,7 +165,9 @@
         { "item": "elec_parts", "x": 11, "y": [ 4, 9 ], "chance": 90, "repeat": [ 2, 3 ] },
         { "item": "elec_parts", "x": 9, "y": [ 4, 9 ], "chance": 90, "repeat": [ 2, 3 ] }
       ],
-      "place_monsters": [ { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 } ]
+      "place_monsters": [
+        { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 }
+      ]
     }
   },
   {
@@ -182,14 +177,14 @@
     "weight": 10,
     "object": {
       "rows": [
-        "|rrrrrrr...........F|s..",
-        "|..................F|t..",
+        "|rrrrrrr............|s..",
+        "|...................|t..",
         "|rrrrrrr................",
         "|.......................",
         "|...................---.",
-        "|..ccc.............O|CT.",
-        "|..................O|s..",
-        "|..ccc.............O|t..",
+        "|..ccc..............|CT.",
+        "|...................|s..",
+        "|..ccc..............|t..",
         "|........|..............",
         "|..ccc...|.CT.CT........",
         "|........|$.......|.....",
@@ -222,8 +217,6 @@
         "c": "t_floor",
         "r": "t_floor",
         "s": "t_floor",
-        "O": "t_floor",
-        "F": "t_floor",
         "t": "t_floor",
         "|": "t_wall"
       },
@@ -236,17 +229,17 @@
         "c": "f_counter",
         "r": "f_rack",
         "s": "f_sink",
-        "O": "f_oven",
-        "F": "f_fridge",
         "t": "f_toilet"
       },
       "place_items": [
         { "item": "power_tools", "x": [ 1, 7 ], "y": 0, "chance": 40 },
         { "item": "hardware_clothing", "x": [ 1, 7 ], "y": 2, "chance": 70, "repeat": [ 1, 2 ] },
-        { "item": "vending_drink_home_impr", "x": 10, "y": 10, "chance": 80, "repeat": [ 5, 8 ] },
+        { "item": "vending_drink", "x": 10, "y": 10, "chance": 80, "repeat": [ 5, 8 ] },
         { "item": "hardware_trash", "x": 17, "y": 11, "chance": 100, "repeat": [ 2, 8 ] }
       ],
-      "place_monsters": [ { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 } ]
+      "place_monsters": [
+        { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 }
+      ]
     }
   },
   {
@@ -279,7 +272,7 @@
         "|.......................",
         "|rrrrrrr................",
         "|...................---.",
-        "|rrrrrrr...........F|CT."
+        "|rrrrrrr............|CT."
       ],
       "terrain": {
         "#": "t_door_locked_interior",
@@ -299,7 +292,6 @@
         "c": "t_thconc_floor",
         "r": "t_floor",
         "s": "t_floor",
-        "F": "t_floor",
         "t": "t_floor",
         "|": "t_wall",
         "~": "t_chainfence_v"
@@ -311,10 +303,11 @@
         "^": "f_indoor_plant",
         "c": "f_counter",
         "r": "f_rack",
-        "F": "f_fridge",
         "s": "f_sink"
       },
-      "toilets": { "t": {} },
+      "toilets": {
+        "t": {}
+      },
       "place_items": [
         { "item": "raw_materials", "x": [ 12, 18 ], "y": 17, "chance": 70, "repeat": [ 2, 3 ] },
         { "item": "raw_materials", "x": 18, "y": [ 9, 12 ], "chance": 70, "repeat": [ 2, 3 ] },
@@ -329,7 +322,9 @@
         { "item": "hardware_clothing", "x": [ 1, 7 ], "y": 21, "chance": 70, "repeat": [ 1, 2 ] },
         { "item": "hand_tools", "x": [ 1, 7 ], "y": 23, "chance": 35, "repeat": [ 1, 2 ] }
       ],
-      "place_monsters": [ { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 } ]
+      "place_monsters": [
+        { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 }
+      ]
     }
   },
   {
@@ -413,7 +408,9 @@
         { "item": "paint", "x": [ 19, 20 ], "y": [ 6, 7 ], "chance": 70, "repeat": [ 1, 2 ] },
         { "item": "hardware_trash", "x": 7, "y": 1, "chance": 100, "repeat": [ 3, 8 ] }
       ],
-      "place_monsters": [ { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 } ]
+      "place_monsters": [
+        { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 }
+      ]
     }
   },
   {
@@ -490,10 +487,14 @@
         { "item": "power_tools", "x": 15, "y": 15, "chance": 80 },
         { "item": "hardware_clothing", "x": [ 16, 17 ], "y": [ 14, 16 ], "chance": 70, "repeat": [ 1, 2 ] },
         { "item": "hardware_trash", "x": 19, "y": 22, "chance": 100, "repeat": [ 2, 8 ] },
-        { "item": "vending_drink_home_impr", "x": 1, "y": 22, "chance": 90, "repeat": [ 1, 2 ] }
+        { "item": "vending_drink", "x": 1, "y": 22, "chance": 90, "repeat": [ 1, 2 ] }
       ],
-      "place_monsters": [ { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 } ],
-      "place_vehicles": [ { "vehicle": "warehouse_vehicles", "x": 5, "y": 17, "chance": 40 } ]
+      "place_monsters": [
+        { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 1 }
+      ],
+      "place_vehicles": [
+        { "vehicle": "warehouse_vehicles", "x": 5, "y": 17, "chance": 40 }
+      ]
     }
   },
   {
@@ -560,8 +561,12 @@
         "t": "f_toilet",
         "x": "f_crate_c"
       },
-      "place_items": [ { "item": "hardware_trash", "x": [ 0, 1 ], "y": [ 10, 11 ], "chance": 100, "repeat": [ 3, 8 ] } ],
-      "place_monsters": [ { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 0.5 } ]
+      "place_items": [
+        { "item": "hardware_trash", "x": [ 0, 1 ], "y": [ 10, 11 ], "chance": 100, "repeat": [ 3, 8 ] }
+      ],
+      "place_monsters": [
+        { "monster": "GROUP_MALL", "x": [ 2, 23 ], "y": [ 2, 23 ], "density": 0.5 }
+      ]
     }
   }
 ]

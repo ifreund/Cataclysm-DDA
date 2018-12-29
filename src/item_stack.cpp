@@ -1,10 +1,8 @@
 #include "item_stack.h"
-
 #include "item.h"
-#include "units.h"
 
-#include <algorithm>
 #include <list>
+#include <algorithm>
 
 size_t item_stack::size() const
 {
@@ -14,14 +12,6 @@ size_t item_stack::size() const
 bool item_stack::empty() const
 {
     return mystack->empty();
-}
-
-void item_stack::clear()
-{
-    // An acceptable implementation for list; would be bad for vector
-    while( !empty() ) {
-        erase( begin() );
-    }
 }
 
 std::list<item>::iterator item_stack::begin()
@@ -86,7 +76,7 @@ units::volume item_stack::stored_volume() const
 long item_stack::amount_can_fit( const item &it ) const
 {
     // Without stacking charges, would we violate the count limit?
-    const bool violates_count = size() >= static_cast<size_t>( count_limit() );
+    const bool violates_count = size() >= ( size_t )count_limit();
     const item *here = it.count_by_charges() ? stacks_with( it ) : nullptr;
 
     if( violates_count && !here ) {
@@ -115,9 +105,4 @@ const item *item_stack::stacks_with( const item &it ) const
         }
     }
     return nullptr;
-}
-
-units::volume item_stack::free_volume() const
-{
-    return max_volume() - stored_volume();
 }

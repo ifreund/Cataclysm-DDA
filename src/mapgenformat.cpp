@@ -1,17 +1,21 @@
-#include "mapgenformat.h"
+#include <iostream>
 
-#include "map.h"
-#include "mapdata.h"
-#include "output.h"
-
-#include <algorithm>
 #include <string>
+
+#include <cassert>
+#include <stdarg.h>
+#include <algorithm>
+
+#include "output.h"
+#include "mapdata.h"
+#include "map.h"
+#include "mapgenformat.h"
 
 namespace mapf
 {
 
 void formatted_set_simple( map *m, const int startx, const int starty, const char *cstr,
-                           const format_effect<ter_id> &ter_b, const format_effect<furn_id> &furn_b )
+                           format_effect<ter_id> ter_b, format_effect<furn_id> furn_b )
 {
     const char *p = cstr;
     int x = startx;

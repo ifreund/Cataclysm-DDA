@@ -8,17 +8,7 @@
     "dependencies": [ "dda" ]
   },
   {
-    "type": "EXTERNAL_OPTION",
-    "name": "FILTHY_MORALE",
-    "info": "Morale penalty for filthy clothing.  If true, wearing filthy clothing will cause morale penalties.",
-    "stype": "bool",
-    "value": true
-  },
-  {
-    "type": "EXTERNAL_OPTION",
-    "name": "FILTHY_WOUNDS",
-    "info": "Infected wounds from filthy clothing.  If true, getting hit in a body part covered in filthy clothing may cause infections.",
-    "stype": "bool",
-    "value": true
+    "type": "WORLD_OPTION",
+    "options": [ "FILTHY_MORALE", "FILTHY_WOUNDS" ]
   }
 ]

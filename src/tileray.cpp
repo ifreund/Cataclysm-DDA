@@ -1,9 +1,7 @@
 #include "tileray.h"
-
 #include "game_constants.h"
-
-#include <cmath>
-#include <cstdlib>
+#include <math.h>
+#include <stdlib.h>
 
 static const int sx[4] = { 1, -1, -1, 1 };
 static const int sy[4] = { 1, 1, -1, -1 };
@@ -27,13 +25,11 @@ void tileray::init( int adx, int ady )
 {
     deltax = adx;
     deltay = ady;
-    ax = abs( deltax );
-    ay = abs( deltay );
+    leftover = 0;
     if( !adx && !ady ) {
         direction = 0;
     } else {
-        direction = static_cast<int>( atan2( static_cast<double>( deltay ),
-                                             static_cast<double>( deltax ) ) * 180.0 / M_PI );
+        direction = ( int )( atan2( ( double )deltay, ( double )deltax ) * 180.0 / M_PI );
         if( direction < 0 ) {
             direction += 360;
         }
@@ -46,25 +42,17 @@ void tileray::init( int adx, int ady )
 
 void tileray::init( int adir )
 {
+    deltax = 0;
+    deltay = 0;
     leftover = 0;
     // Clamp adir to the range [0, 359]
     direction = ( adir < 0 ? 360 - ( ( -adir ) % 360 ) : adir % 360 );
     last_dx = 0;
     last_dy = 0;
-    deltax = static_cast<int>( cos( static_cast<float>( direction ) * M_PI / 180.0 ) * 100 );
-    deltay = static_cast<int>( sin( static_cast<float>( direction ) * M_PI / 180.0 ) * 100 );
-    ax = abs( deltax );
-    ay = abs( deltay );
+    deltax = abs( ( int )( cos( ( float ) direction * M_PI / 180.0 ) * 100 ) );
+    deltay = abs( ( int )( sin( ( float ) direction * M_PI / 180.0 ) * 100 ) );
     steps = 0;
     infinite = true;
-}
-
-void tileray::clear_advance()
-{
-    leftover = 0;
-    last_dx = 0;
-    last_dy = 0;
-    steps = 0;
 }
 
 int tileray::dx() const
@@ -117,7 +105,7 @@ long tileray::dir_symbol( long sym ) const
         // output.cpp special_symbol() converts yubn to corners, hj to lines, c to cross
         case 'j': // vertical line
             return "h\\j/h\\j/"[dir8()];
-        case 'h': // horizontal line
+        case 'h': // horizonal line
             return "jhjh"[dir4()];
         case 'y': // top left corner
             return "unby"[dir4()];
@@ -178,41 +166,34 @@ int tileray::ortho_dy( int od ) const
 
 bool tileray::mostly_vertical() const
 {
-    return ax <= ay;
+    return abs( deltax ) <= abs( deltay );
 }
 
 void tileray::advance( int num )
 {
     last_dx = last_dy = 0;
-    if( num == 0 ) {
-        return;
-    }
+    int ax = abs( deltax );
+    int ay = abs( deltay );
     int anum = abs( num );
-    steps = anum;
-    const bool vertical = mostly_vertical();
-    if( direction % 90 ) {
-        for( int i = 0; i < anum; i++ ) {
-            if( vertical ) {
-                // mostly vertical line
-                leftover += ax;
-                if( leftover >= ay ) {
-                    last_dx++;
-                    leftover -= ay;
-                }
-            } else {
-                // mostly horizontal line
-                leftover += ay;
-                if( leftover >= ax ) {
-                    last_dy++;
-                    leftover -= ax;
-                }
+    for( int i = 0; i < anum; i++ ) {
+        if( mostly_vertical() ) {
+            // mostly vertical line
+            leftover += ax;
+            if( leftover >= ay ) {
+                last_dx++;
+                leftover -= ay;
             }
+            last_dy++;
+        } else {
+            // mostly horizontal line
+            leftover += ay;
+            if( leftover >= ax ) {
+                last_dy++;
+                leftover -= ax;
+            }
+            last_dx++;
         }
-    }
-    if( vertical ) {
-        last_dy = anum;
-    } else {
-        last_dx = anum;
+        steps++;
     }
 
     // offset calculated for 0-90 deg quadrant, we need to adjust if direction is other
@@ -230,5 +211,7 @@ bool tileray::end()
     if( infinite ) {
         return true;
     }
-    return mostly_vertical() ? steps >= ay - 1 : steps >= ax - 1;
+    return mostly_vertical() ? steps >= abs( deltay ) - 1 : steps >= abs( deltax ) - 1;
 }
+
+

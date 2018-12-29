@@ -82,27 +82,12 @@
   {
     "type": "snippet",
     "category": "flier",
-    "text": [ "This is an advertisement for Sybil's Cyber Boutique.  It shows a picture of several bikini-clad nurses giving liquid medicine to a delighted patient, who uses a fingertip needle to suck it in into his veins.  Outside the window two shadow figures using the same fingertip needles to absorb something less resembling medicine.  The caption reads: \"Why use old IV when you can have Intravenous Needle CBM!\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "flier",
     "text": [ "This is an advertisement for Sybil's Cyber Boutique.  It shows a picture of a nerdy looking man surrounded by a group of admiring women.  In the foreground a blood-drenched doctor gives an exaggerated wink and two thumbs up.  The caption reads: \"Holiday sales!  Get the package deals!\"" ]
   },
   {
     "type": "snippet",
     "category": "flier",
     "text": [ "This is an advertisement for Sybil's Cyber Boutique.  It shows a picture of a man flexing shiny cybernetic arms in front of a mirror.  He is flanked by two scantily clad nurses who hold bloody chainsaws and give approving thumbs up.  In the background feral dogs gnaw on the man's discarded former limbs.  The caption reads:  \"Spring Cleaning Sale!  20% off!\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "flier",
-    "text": [ "This is an advertisement for Sybil's Cyber Boutique.  It shows a picture of a man carrying a somewhat confused horse on his shoulders.  He is flanked by two scantily clad nurses who hold bloody chainsaws and give approving thumbs up.  His bulging knees and elbows are stitched and seem to be the source of his ability.  The caption reads:  \"Brand new!  Horse power at hand!\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "flier",
-    "text": [ "This is an advertisement for Sybil's Cyber Boutique.  It shows a picture of a man smiling while being relentlessly punched by a boxer.  He doesn't even sweat as punches have no effect on him.  Two scantily clad nurses give approving thumbs up from the background.  The caption reads:  \"Bouncy as never before!  Absorb those shocks!\"" ]
   },
   {
     "type": "snippet",
@@ -277,17 +262,12 @@
   {
     "type": "snippet",
     "category": "flier",
-    "text": [ "\"Joe's Diner; 1/2 pound of meat, 3 toppings, 'your choice', all with a side of freedom fries and a BIG Gulp size pop.\"" ]
+    "text": [ "\"Joe's Diner; 1/2 pound of meat, 3 toppings, \"your choice\", all with a side of freedom fries and a BIG Gulp size pop.\"" ]
   },
   {
     "type": "snippet",
     "category": "note",
     "text": [ "\"WE WERE RIGHT THE GOVERNMENT DID IT\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"Have seen a zombie making its kin raise even despite damage that normally would take them down, the air around it shimmered like around that hole in the air we've seen creatures coming through back home\"" ]
   },
   {
     "type": "snippet",
@@ -872,7 +852,7 @@
   {
     "type": "snippet",
     "category": "note",
-    "text": [ "\"My skin is crawling and I teleport every few minutes... what is going o\"" ]
+    "text": [ "\"My skin is crawling and I teleport every few minutes.. what is going o\"" ]
   },
   {
     "type": "snippet",
@@ -1451,91 +1431,6 @@
   },
   {
     "type": "snippet",
-    "category": "note",
-    "text": [ "\"Got my mortar and pestle.  Now if I could just find some avocados...\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"saw a girl standing with the mushrooms.  spores coming out of slits in her neck.  she looked happy.\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"Found some pink berries.  Eating them makes bushes into more pink berries.  Infinite berry.\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"m ust grow                 unity\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"AMY IS FUNGUS.  DO NOT LISTEN IF SHE ASKS YOU TO TAKE OFF MASK\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"my rabbi follows a new god now.  asks us to call him a local guide.  i dont mind, he keeps us fed\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"Fungus are helping us.  Help them and they will unite us\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"Saw a boy couldnt be older than 16.  Walked straight through the mushroom tower.  THROUGH IT\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"Found some food in a box outside my house.  We ate it and now the fungaloids aren't harming us.  I think we are a mushroom now\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"saw the girl again.  she looked dead exhausted and walked right into the fungus.  30 mins later and she walked out good as new\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"HADENSBROOK REBUILT AROUND FUNGUS.  THEY EAT GRAY APPLES AND SPREAD IT\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"mycus must grow\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"School bus with solar panels = TRUST.  Gave us berries and seeds, we were out of food\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"d o nThelp scho Ol buss makE seeeedS ARe FUNGUS!! !\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"Go to every fungus patch you find but WEAR A SUIT.  Food there is very very filling.  Look for pink berries, blue flowers\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"red blue yellow berry seed sap bloom flowers tower mycus mycus mycus.\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "note",
-    "text": [ "\"Husband 30 yrs died in bombs.  Mushrooms brought him back.  GIVE YOURSELF TO THEm AND THEY WILL HELP YOU\"" ]
-  },
-  {
-    "type": "snippet",
     "category": "newest_news",
     "text": [
       "LABS BOMBED: In further invasion proof (discounting earlier suggestion of a riot drug) most of New England's scientific labs were bombed simultaneously yesterday.  No word yet from the military about who the aggressors are.",
@@ -1549,7 +1444,7 @@
       "LEAVE TO THE EXPERTS -- GENERAL: \"Do not attempt to deal with invaders yourself, our troops have the technology and the training for military action.  Loud gunfire may attract more enemy attention than you have ammo!\"",
       "TOWNS OCCUPIED TERRITORY: FEMA officials said today \"Do not try to defend your property in towns: invaders use advanced tracking, perhaps scent.  Please retreat to your nearest evacuation center outside town and await extraction.\"",
       "PUBLIC SERVICE ANNOUNCEMENT: \"Beware Acid Rain\".  Several caustic chemicals in the air react with rain clouds to cause deadly acid rain.  No word yet on if this is a deliberate tactic or a side effect of the earlier bombings.",
-      "EDITOR SAYS \"DESTROY THE DEAD\".  Recognizable enemy dead left lying in the street may give away militia positions!  If you kill an enemy combatant, smash or butcher with a knife until unrecognizable!  Screw Geneva!  Protect our troops!",
+      "EDITOR SAYS \"DESTROY THE DEAD\".  Recognisable enemy dead left lying in the street may give away militia positions!  If you kill an enemy combatant, smash or butcher with a knife until unrecognizable!  Screw Geneva!  Protect our troops!",
       "SOLDIERS SEEN HEADED UNDERGROUND.  Rumors abound as eyewitness see troops headed underground near a local salon.  Expert sources suggest that the soldiers may be headed to a possible underground bunker."
     ]
   },
@@ -1569,10 +1464,7 @@
       "GLAMOPOLITAN!  We've got ALL the latest tips!  Whether you want to know what the elite are eating, wearing or discussing, Glamopolitan is YOUR magazine!  So pick up a copy today and \"Sizzle Like A Star\"!",
       "POPULAR MECHANICS: People say mechanics is boring.  We say, Prove them Wrong!  We've got all the articles that make it interesting to talk about, so you can \"Make Mechanics Popular\"!",
       "CRAFTY CRAFTERS QUARTERLY: Macaroni isn't just for eating anymore!  Learn how to make jewelery and art from it as well!  We also discuss the correct way to use superglue without gluing your hands together!",
-      "UNDERGROUND BUNKER?  Sources in the government suggest that an underground bunker is being built in a secret location in case of enemy attack.  We were unable to get the exact location as our sources mysteriously disappeared shortly after revealing this information.",
-      "STUDENT MISSING: A high school student vanished yesterday evening in the forest near Wayland.  The 17-year-old international student from China (who adopted the anglicized nickname \"Brett\" due to Americans' difficulty pronouncing his given name) was last seen with his friends in the camp.  \"Brett said that he was gonna get some firewood but he never came back,\" said his classmate, Jianxiang Wang.  The search is underway.",
-      "STILL SEARCHING: The search for Brett, the high school student who went missing three days ago, is still ongoing.  \"He could have played in the soccer game against Weston High School yesterday,\" Brett's sorrowful teammate said, \"[..] we've never stopped praying.\"  Despite the best efforts of the County Search & Rescue, Brett had still not been located at the time of this report.",
-      "RUMORS DENIED: Allegations that the military had been conducting teleportation experiments in secret just outside Wayland were put to rest during a press conference earlier today.  \"I have to clarify that not only have we never done such research,\" said the officer on the press conference, \"teleportation only exists in sci-fi films.\""
+      "UNDERGROUND BUNKER?  Sources in the government suggest that a underground bunker is being built in a secret location in case of enemy attack.  We were unable to get the exact location as our sources mysteriously disappeared shortly after revealing this information."
     ]
   },
   {
@@ -1597,7 +1489,7 @@
     "category": "one_year_old_news",
     "text": [
       "SHOW THEM YOUR GUNS: In response to China's latest threats, the government has further relaxed gun control, expected to increase the economic boost of earlier gun subsidies and relieve public tension.",
-      "READY FOR THE WORST: The government has proven it is ready to deal with China's threats.  In the event of an actual attack, we have established evacuation centers, within a short distance of most towns.",
+      "READY FOR THE WORST: The government has proven it is ready to deal with China's threats.  In the event of an actual attack, we have established evacuation centres, within a short distance of most towns.",
       "MUTANT COLD: A new cold virus has emerged in the New England area.  \"There don't appear to be complications, but many sufferers are developing large amounts of benign tumorous tissue, A pound or more,\" said a doctor",
       "GRAVE BUSINESS: Recent reports show a large spike in thefts from and assaults on funeral homes in the last few weeks.  Described as highly strange but not especially dangerous, Homeland Security is \"looking at the connections now.\"",
       "SPACE TELEPORTATION - TRUTH OR FICTION?  Scientists addressed a growing conspiracy theory today \"The plutonium consumed is massive.  We cannot use teleportation to reach aliens, unless they live on some kind of parallel world.\"",
@@ -1649,40 +1541,5 @@
       "GOOD WITH YOUR HANDS?  Engineering always needs another hand keeping our home in good working order!  As an incentive, everyone working on level 3 will receive additional hazardous pay and time off.  Please go to the engineering office on level 3 if you are interested.",
       "WANT TO CONTINUE YOUR EDUCATION?  Our educational facilities are top notch and offer courses for individuals at all age groups.  Many new careers are opening up to those who are willing to learn a new craft.  Our library and research labs will keep even the hungriest minds fed!"
     ]
-  },
-  {
-    "type": "snippet",
-    "category": "flier",
-    "text": [ "This is an advertisement for a local hospital.  You see a clean hospital room with a smiling man lying on the bed.  The bed is connected to some medical apparatus with a \"Autodoc Mk. X\" printed on it.  A doctor is seen working with its console, while his assistant is unpacking some high-tech hardware.  The caption reads: \"Autodoc - augmentation has never been so easy, reliable, and safe.\"" ]
-  },
-  {
-    "type": "snippet",
-    "category": "pyromania_withdrawal",
-    "text": [ "You feel cold.  You need the warmth of a fire." ]
-  },
-  {
-    "type": "snippet",
-    "category": "pyromania_withdrawal",
-    "text": [ "Maybe a fire could calm your nerves?" ]
-  },
-  {
-    "type": "snippet",
-    "category": "pyromania_withdrawal",
-    "text": [ "You need to ignite something." ]
-  },
-  {
-    "type": "snippet",
-    "category": "pyromania_withdrawal",
-    "text": [ "You daydream of crackling fire..." ]
-  },
-  {
-    "type": "snippet",
-    "category": "pyromania_withdrawal",
-    "text": [ "You shiver.  A fire would be great right now." ]
-  },
-  {
-    "type": "snippet",
-    "category": "pyromania_withdrawal",
-    "text": [ "You think of randomly lighting a fire, but decide against it." ]
   }
 ]

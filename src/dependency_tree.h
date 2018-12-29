@@ -2,14 +2,13 @@
 #ifndef DEPENDENCY_TREE_H
 #define DEPENDENCY_TREE_H
 
-#include "string_id.h"
-
+#include <vector>
 #include <map>
 #include <stack>
-#include <vector>
-
-struct MOD_INFORMATION;
-using mod_id = string_id<MOD_INFORMATION>;
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <memory>
 
 enum NODE_ERROR_TYPE {
     DEPENDENCY,
@@ -22,16 +21,16 @@ class dependency_node
     public:
         std::vector<dependency_node *> parents, children;
         std::map<NODE_ERROR_TYPE, std::vector<std::string> > all_errors;
-        mod_id key;
+        std::string key;
         bool availability;
 
         // cyclic check variables
-        int index;
-        int lowlink;
+        int index, lowlink;
         bool on_stack;
 
         dependency_node();
-        dependency_node( mod_id _key );
+        dependency_node( std::string _key );
+        ~dependency_node();
 
         void add_parent( dependency_node *parent );
         void add_child( dependency_node *child );
@@ -42,10 +41,10 @@ class dependency_node
 
         // Tree traversal
         // Upward towards head(s)
-        std::vector<mod_id> get_dependencies_as_strings();
+        std::vector<std::string> get_dependencies_as_strings();
         std::vector<dependency_node * > get_dependencies_as_nodes();
         // Downward towards leaf(ves)
-        std::vector<mod_id> get_dependents_as_strings();
+        std::vector< std::string> get_dependents_as_strings();
         std::vector< dependency_node * > get_dependents_as_nodes();
 
         void inherit_errors();
@@ -55,28 +54,32 @@ class dependency_node
 class dependency_tree
 {
     public:
+        /** Default constructor */
         dependency_tree();
+        /** Default destructor */
+        virtual ~dependency_tree();
 
-        void init( std::map<mod_id, std::vector<mod_id> > key_dependency_map );
+        void init( std::map<std::string, std::vector<std::string> > key_dependency_map );
 
         void clear();
 
         // tree traversal
         // Upward by key
-        std::vector<mod_id > get_dependencies_of_X_as_strings( mod_id key );
-        std::vector<dependency_node * > get_dependencies_of_X_as_nodes( mod_id key );
+        std::vector<std::string > get_dependencies_of_X_as_strings( std::string key );
+        std::vector<dependency_node * > get_dependencies_of_X_as_nodes( std::string key );
         // Downward by key
-        std::vector< mod_id > get_dependents_of_X_as_strings( mod_id key );
-        std::vector< dependency_node * > get_dependents_of_X_as_nodes( mod_id key );
+        std::vector< std::string > get_dependents_of_X_as_strings( std::string key );
+        std::vector< dependency_node * > get_dependents_of_X_as_nodes( std::string key );
 
-        bool is_available( mod_id key );
-        dependency_node *get_node( mod_id key );
+        bool is_available( std::string key );
+        dependency_node *get_node( std::string key );
 
-        std::map<mod_id, dependency_node> master_node_map;
+        std::map<std::string, std::unique_ptr<dependency_node>> master_node_map;
+    protected:
     private:
         // Don't need to be called directly. Only reason to call these are during initialization phase.
-        void build_node_map( std::map<mod_id, std::vector<mod_id > > key_dependency_map );
-        void build_connections( std::map<mod_id, std::vector<mod_id > > key_dependency_map );
+        void build_node_map( std::map<std::string, std::vector<std::string > > key_dependency_map );
+        void build_connections( std::map<std::string, std::vector<std::string > > key_dependency_map );
 
         /*
         Cyclic Dependency checks using Tarjan's Strongly Connected Components algorithm

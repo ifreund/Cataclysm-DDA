@@ -8,7 +8,7 @@
      "type" : "ammunition_type",
      "id" : "155mm",
      "name" : "155mm shell",
-     "default" : "155mm_frag"
+     "default" : "155mm_heat"
 },{
      "type" : "ammunition_type",
      "id" : "30mm",
@@ -17,7 +17,7 @@
 },{
      "type" : "ammunition_type",
      "id" : "atgm",
-     "name" : "152mm anti-tank guided missile",
+     "name" : "anti-tank guided missile",
      "default" : "atgm_heat"
   }
 ]

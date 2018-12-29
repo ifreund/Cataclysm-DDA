@@ -1,21 +1,27 @@
 #pragma once
-#ifndef GENERIC_FACTORY_H
-#define GENERIC_FACTORY_H
+#ifndef H_GENERIC_FACTORY
+#define H_GENERIC_FACTORY
 
-#include "assign.h"
-#include "debug.h"
-#include "init.h"
-#include "int_id.h"
-#include "json.h"
 #include "string_id.h"
+#include "int_id.h"
+#include "init.h"
+
+#include "debug.h"
+#include "json.h"
+#include "color.h"
 #include "translations.h"
 #include "units.h"
+#include "assign.h"
 
-#include <algorithm>
-#include <bitset>
-#include <set>
+#include <string>
 #include <unordered_map>
+#include <bitset>
+#include <map>
+#include <set>
+#include <string>
 #include <vector>
+#include <algorithm>
+#include <sstream>
 
 /**
 A generic class to store objects identified by a `string_id`.
@@ -111,10 +117,6 @@ class string_id_reader;
 template<typename T>
 class generic_factory
 {
-
-    public:
-        virtual ~generic_factory() = default;
-
     private:
         DynamicDataLoader::deferred_json deferred;
 
@@ -175,49 +177,6 @@ class generic_factory
               alias_member_name( alias_member_name ),
               dummy_obj() {
         }
-
-        /**
-        * Perform JSON inheritance handling for `T def` and returns true if JsonObject is real.
-        *
-        * If the object contains a "copy-from" member the corresponding abstract gets copied if found.
-        *    If abstract is not found, object is added to deferred.
-        * If the object is abstract, it is loaded via `T::load` and added to `abstracts`
-        *
-        * @return true if `jo` is loaded and false if loading is deferred.
-        * @throws JsonError If `jo` is both abstract and real. (contains "abstract" and "id" members)
-        */
-        bool handle_inheritance( T &def, JsonObject &jo, const std::string &src ) {
-            static const std::string copy_from( "copy-from" );
-            if( jo.has_string( copy_from ) ) {
-                const std::string source = jo.get_string( copy_from );
-                auto base = map.find( string_id<T>( source ) );
-
-                if( base != map.end() ) {
-                    def = obj( base->second );
-                } else {
-                    auto ab = abstracts.find( source );
-
-                    if( ab != abstracts.end() ) {
-                        def = ab->second;
-                    } else {
-                        def.was_loaded = false;
-                        deferred.emplace_back( jo.str(), src );
-                        return false;
-                    }
-                }
-                def.was_loaded = true;
-            }
-
-            if( jo.has_string( "abstract" ) ) {
-                if( jo.has_string( "id" ) ) {
-                    jo.throw_error( "cannot specify both 'abstract' and 'id'" );
-                }
-                def.load( jo, src );
-                abstracts[jo.get_string( "abstract" )] = def;
-            }
-            return true;
-        }
-
         /**
          * Load an object of type T with the data from the given JSON object.
          *
@@ -232,9 +191,27 @@ class generic_factory
 
             T def;
 
-            if( !handle_inheritance( def, jo, src ) ) {
-                return;
+            static const std::string copy_from( "copy-from" );
+            if( jo.has_string( copy_from ) ) {
+                const std::string source = jo.get_string( copy_from );
+                auto base = map.find( string_id<T>( source ) );
+
+                if( base != map.end() ) {
+                    def = obj( base->second );
+                } else {
+                    auto ab = abstracts.find( source );
+
+                    if( ab != abstracts.end() ) {
+                        def = ab->second;
+                    } else {
+                        deferred.emplace_back( jo.str(), src );
+                        return;
+                    }
+                }
+
+                def.was_loaded = true;
             }
+
             if( jo.has_string( id_member_name ) ) {
                 def.id = string_id<T>( jo.get_string( id_member_name ) );
                 def.load( jo, src );
@@ -250,7 +227,11 @@ class generic_factory
                     }
                 }
 
-            } else if( !jo.has_string( "abstract" ) ) {
+            } else if( jo.has_string( "abstract" ) ) {
+                def.load( jo, src );
+                abstracts[jo.get_string( "abstract" )] = def;
+
+            } else {
                 jo.throw_error( "must specify either id or abstract" );
             }
         }
@@ -334,7 +315,7 @@ class generic_factory
          */
         const T &obj( const int_id<T> &id ) const {
             if( !is_valid( id ) ) {
-                debugmsg( "invalid %s id \"%d\"", type_name.c_str(), id.to_i() );
+                debugmsg( "invalid %s id \"%d\"", type_name.c_str(), id );
                 return dummy_obj;
             }
             return list[id];
@@ -440,6 +421,7 @@ class Dummy2 {
     nc_color c;
     void load(JsonObject &jo) {
         mandatory(jo, was_loaded, "b", b); // uses JsonIn::read(int&)
+        mandatory(jo, was_loaded, "c", c, color_reader);
     }
 };
 \endcode
@@ -538,6 +520,7 @@ inline void optional( JsonObject &jo, const bool was_loaded, const std::string &
     }
 }
 /**@}*/
+
 
 /**
  * Reads a string from JSON and (if not empty) applies the translation function to it.
@@ -766,6 +749,18 @@ class generic_typed_reader
             }
             member = derived.get_next( *jo.get_raw( member_name ) );
             return true;
+        }
+};
+
+/**
+ * Converts the input string into a `nc_color`.
+ */
+class color_reader : public generic_typed_reader<color_reader>
+{
+    public:
+        nc_color get_next( JsonIn &jin ) const {
+            // TODO: check for valid color name
+            return color_from_string( jin.get_string() );
         }
 };
 

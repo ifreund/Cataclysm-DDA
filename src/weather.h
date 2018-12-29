@@ -2,12 +2,10 @@
 #ifndef WEATHER_H
 #define WEATHER_H
 
-#include "color.h"
-
 /**
  * @name BODYTEMP
  * Body temperature.
- * Body temperature is measured on a scale of 0u to 10000u, where 10u = 0.02C and 5000u is 37C
+ * Bodytemp is measured on a scale of 0u to 10000u, where 10u = 0.02C and 5000u is 37C
  * Outdoor temperature uses similar numbers, but on a different scale: 2200u = 22C, where 10u = 0.1C.
  * Most values can be changed with no impact on calculations.
  * Maximum heat cannot pass 15000u, otherwise the player will vomit to death.
@@ -22,20 +20,23 @@
 #define BODYTEMP_SCORCHING 9500 //!< Level 3 hotness.
 ///@}
 
+/**
+ * How far into the future we should generate weather, in hours.
+ * 168 hours in a week.
+ */
+#define MAX_FUTURE_WEATHER 168
+
+#include "calendar.h"
+
 #include <string>
 #include <vector>
 #include <utility>
 
-class time_duration;
-class time_point;
 class item;
 struct point;
 struct tripoint;
 struct trap;
-template<typename T>
-class int_id;
-struct oter_t;
-using oter_id = int_id<oter_t>;
+typedef int nc_color;
 
 /**
  * Weather type enum.
@@ -81,10 +82,7 @@ struct weather_printable {
     std::vector<std::pair<int, int> > vdrops; //!< Coordinates targeted for droplets.
     nc_color colGlyph; //!< Color to draw glyph this animation frame.
     char cGlyph; //!< Glyph to draw this animation frame.
-    int startx;
-    int starty;
-    int endx;
-    int endy;
+    int startx, starty, endx, endy;
 };
 
 /**
@@ -123,11 +121,13 @@ struct weather_sum {
     float sunlight = 0.0f;
 };
 
-weather_datum const weather_data( weather_type const type );
+const std::string season_name( int season );
+const std::string season_name_upper( int season );
+weather_datum const &weather_data( weather_type type );
 
-std::string weather_forecast( const point &abs_sm_pos );
+std::string weather_forecast( point const &abs_sm_pos );
 
-// Returns input value (in Fahrenheit) converted to whatever temperature scale set in options.
+// Returns input value (in fahrenheit) converted to whatever temperature scale set in options.
 //
 // If scale is Celsius:    temperature(100) will return "37C"
 // If scale is Fahrenheit: temperature(100) will return "100F"
@@ -139,11 +139,11 @@ std::string print_pressure( double pressure, int decimals = 0 );
 
 int get_local_windchill( double temperature, double humidity, double windpower );
 int get_local_humidity( double humidity, weather_type weather, bool sheltered = false );
-int get_local_windpower( double windpower, const oter_id &omter,
+int get_local_windpower( double windpower, std::string const &omtername = "no name",
                          bool sheltered = false );
 
-weather_sum sum_conditions( const time_point &start,
-                            const time_point &end,
+weather_sum sum_conditions( const calendar &startturn,
+                            const calendar &endturn,
                             const tripoint &location );
 
 /**
@@ -151,9 +151,11 @@ weather_sum sum_conditions( const time_point &start,
  * @param pos The absolute position of the funnel (in the map square system, the one used
  * by the @ref map, but absolute).
  * @param tr The funnel (trap which acts as a funnel).
+ * @param startturn First turn of the retroactive filling.
+ * @param endturn Last turn of the retroactive filling.
  */
-void retroactively_fill_from_funnel( item &it, const trap &tr, const time_point &start,
-                                     const time_point &end, const tripoint &pos );
+void retroactively_fill_from_funnel( item &it, const trap &tr, int startturn, int endturn,
+                                     const tripoint &pos );
 
 double funnel_charges_per_turn( double surface_area_mm2, double rain_depth_mm_per_hour );
 
@@ -162,14 +164,9 @@ double funnel_charges_per_turn( double surface_area_mm2, double rain_depth_mm_pe
  * locations.
  * The location is in absolute maps squares (the system which the @ref map uses),
  * but absolute (@ref map::getabs).
- * The returned value is in time at standard conditions it is `end - start`.
+ * The returned value is in turns (at standard conditions it is endturn-startturn).
  */
-time_duration get_rot_since( const time_point &start, const time_point &end, const tripoint &pos );
-
-/**
-* Calculates rot per hour at given temperature. Reference in weather_data.cpp
-*/
-int get_hourly_rotpoints_at_temp( int temp );
+int get_rot_since( int startturn, int endturn, const tripoint &pos );
 
 /**
  * Is it warm enough to plant seeds?

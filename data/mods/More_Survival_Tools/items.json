@@ -16,7 +16,7 @@
     "sub": "hotplate",
     "max_charges": 50,
     "charges_per_use": 1,
-    "use_action": [ "HOTPLATE", "HEAT_FOOD" ]
+    "use_action": "HOTPLATE"
   },
   {
     "id": "hobo_stove_on",
@@ -71,8 +71,7 @@
       "type": "firestarter",
       "moves": 1000,
       "moves_slow": 5000
-    },
-    "flags": [ "FIRESTARTER" ]
+    }
   },
   {
     "id": "tinderbox",
@@ -105,7 +104,7 @@
     "weight": 500,
     "volume": 2,
     "price": 1000,
-    "material": "steel",
+    "material": "iron",
     "symbol": ",",
     "color": "light_gray",
     "ammo": "tinder",
@@ -125,8 +124,7 @@
         "menu_text": "Extinguish",
         "type": "transform"
       }
-    ],
-    "flags": [ "FIRESTARTER" ]
+    ]
   },
   {
     "id": "bottle_metal",
@@ -320,7 +318,7 @@
     "color": "light_gray",
     "techniques": [ "WBLOCK_1" ],
     "qualities": [ [ "COOK", 1 ] ],
-    "flags": [ "SPEAR", "REACH_ATTACK", "SHEATH_SPEAR" ]
+    "flags": [ "SPEAR", "REACH_ATTACK" ]
   },
   {
     "id": "milk_curdling",
@@ -437,7 +435,7 @@
     "initial_charges": 50,
     "max_charges": 50,
     "charges_per_use": 1,
-    "use_action": [ "HOTPLATE", "HEAT_FOOD" ]
+    "use_action": "HOTPLATE"
   },
   {
     "id": "bottle_folding",
@@ -471,8 +469,7 @@
     "material": "steel",
     "symbol": ")",
     "color": "light_gray",
-    "qualities": [ [ "COOK", 2 ], [ "BOIL", 1 ], [ "CONTAIN", 1 ] ],
-    "use_action": "HEAT_FOOD"
+    "qualities": [ [ "COOK", 2 ], [ "BOIL", 1 ], [ "CONTAIN", 1 ] ]
   },
   {
     "id": "pot_makeshift",
@@ -492,8 +489,7 @@
       "contains": 4,
       "watertight": true
     },
-    "qualities": [ [ "COOK", 2 ], [ "BOIL", 1 ], [ "CONTAIN", 1 ] ],
-    "use_action": "HEAT_FOOD"
+    "qualities": [ [ "COOK", 2 ], [ "BOIL", 1 ], [ "CONTAIN", 1 ] ]
   },
   {
     "id": "pot_makeshift_copper",
@@ -513,13 +509,12 @@
       "contains": 4,
       "watertight": true
     },
-    "qualities": [ [ "COOK", 2 ], [ "BOIL", 1 ], [ "CONTAIN", 1 ] ],
-    "use_action": "HEAT_FOOD"
+    "qualities": [ [ "COOK", 2 ], [ "BOIL", 1 ], [ "CONTAIN", 1 ] ]
   },
   {
     "id": "canteen_wood",
     "type": "CONTAINER",
-    "category": "clothing",
+    "category": "other",
     "name": "wooden canteen",
     "description": "A water canteen made from wood, secured by metal bands and sealed with wax or pitch.  Holds 1.5 liters and has a simple carry strap.",
     "weight": 232,
@@ -575,7 +570,7 @@
     "type": "TOOL",
     "category": "tools",
     "name": "whistle multitool",
-    "description": "A cheap gadget combining a whistle, thermometer, magnifying glass, and compass.",
+    "description": "A cheap gadget combining a whistle, thermometer, magnifying glass, and button compass.",
     "weight": 1,
     "volume": 1,
     "price": 200,
@@ -601,7 +596,22 @@
         "need_sunlight": true
       }
     ],
-    "flags": [ "FIRESTARTER", "THERMOMETER" ]
+    "flags": [ "THERMOMETER" ]
+  },
+  {
+    "id": "mortar_pestle",
+    "type": "TOOL",
+    "name": "mortar and pestle",
+    "name_plural": "sets of mortar and pestle",
+    "description": "This is a simple combination of a small grindstone and a bowl-shaped stone.  Used for grinding grain, but time-consuming compared to more complex methods.",
+    "weight": 1632,
+    "volume": 4,
+    "price": 0,
+    "to_hit": -4,
+    "bashing": 3,
+    "material": "stone",
+    "symbol": ":",
+    "color": "light_gray"
   },
   {
     "id": "crossbow_makeshift",
@@ -616,7 +626,7 @@
     "symbol": "(",
     "color": "green",
     "ammo": "bolt",
-    "skill": "rifle",
+    "skill": "archery",
     "range": 6,
     "ranged_damage": 7,
     "dispersion": 250,
@@ -625,60 +635,5 @@
     "reload": 300,
     "valid_mod_locations": [ [ "underbarrel", 1 ], [ "sights", 1 ], [ "accessories", 2 ] ],
     "flags": [ "PRIMITIVE_RANGED_WEAPON" ]
-  },
-  {
-    "id": "heavy_snare_kit",
-    "type": "TOOL",
-    "name": "heavy snare kit",
-    "description": "This is a kit for a simple trap consisting of a rope noose and a snare trigger.  It requires a tree nearby.  It is effective at trapping monsters.",
-    "weight": 1066,
-    "volume": 1,
-    "price": 250,
-    "cutting": 10,
-    "material": "wood",
-    "symbol": ";",
-    "color": "brown",
-    "use_action": {
-      "type": "place_trap",
-      "needs_neighbor_terrain": "t_tree",
-      "trap": "tr_heavy_snare",
-      "moves": 200,
-      "practice": 4,
-      "done_message": "You set the snare trap."
-    }
-  },
-  {
-    "id": "light_snare_kit",
-    "type": "TOOL",
-    "name": "light snare kit",
-    "description": "This is a kit for a simple trap consisting of a string noose and a snare trigger.  It requires a young tree nearby.  It is effective at trapping and killing some small animals.",
-    "weight": 886,
-    "volume": 1,
-    "price": 100,
-    "cutting": 6,
-    "material": "wood",
-    "symbol": ";",
-    "color": "brown",
-    "use_action": {
-      "type": "place_trap",
-      "needs_neighbor_terrain": "t_tree_young",
-      "trap": "tr_light_snare",
-      "moves": 150,
-      "practice": 2,
-      "done_message": "You set the snare trap."
-    }
-  },
-  {
-    "id": "snare_trigger",
-    "type": "TOOL",
-    "name": "snare trigger",
-    "description": "This is a stick that has been cut into a trigger mechanism for a snare trap.",
-    "weight": 850,
-    "volume": 1,
-    "price": 0,
-    "to_hit": -1,
-    "material": "wood",
-    "symbol": ";",
-    "color": "brown"
   }
 ]

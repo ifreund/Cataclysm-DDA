@@ -1,22 +1,22 @@
+#include "game.h"
+#include "player.h"
+#include "output.h"
+#include "input.h"
 #include "mission.h"
-
+#include "weather.h"
 #include "calendar.h"
 #include "compatibility.h" // needed for the workaround for the std::to_string bug in some compilers
-#include "game.h"
-#include "input.h"
-#include "output.h"
-#include "player.h"
-#include "npc.h"
 
-#include <map>
-#include <string>
 #include <vector>
+#include <string>
+#include <map>
+
 
 void game::list_missions()
 {
-    catacurses::window w_missions = catacurses::newwin( FULL_SCREEN_HEIGHT, FULL_SCREEN_WIDTH,
-                                    ( TERMY > FULL_SCREEN_HEIGHT ) ? ( TERMY - FULL_SCREEN_HEIGHT ) / 2 : 0,
-                                    ( TERMX > FULL_SCREEN_WIDTH ) ? ( TERMX - FULL_SCREEN_WIDTH ) / 2 : 0 );
+    WINDOW *w_missions = newwin( FULL_SCREEN_HEIGHT, FULL_SCREEN_WIDTH,
+                                 ( TERMY > FULL_SCREEN_HEIGHT ) ? ( TERMY - FULL_SCREEN_HEIGHT ) / 2 : 0,
+                                 ( TERMX > FULL_SCREEN_WIDTH ) ? ( TERMX - FULL_SCREEN_WIDTH ) / 2 : 0 );
 
     enum class tab_mode : int {
         TAB_ACTIVE = 0,
@@ -63,7 +63,7 @@ void game::list_missions()
         // entries_per_page * page number
         const int top_of_page = entries_per_page * ( selection / entries_per_page );
         const int bottom_of_page =
-            std::min( top_of_page + entries_per_page - 1, static_cast<int>( umissions.size() ) - 1 );
+            std::min( top_of_page + entries_per_page - 1, ( int )umissions.size() - 1 );
 
         for( int i = 1; i < FULL_SCREEN_WIDTH - 1; i++ ) {
             mvwputch( w_missions, 2, i, BORDER_COLOR, LINE_OXOX );
@@ -94,55 +94,51 @@ void game::list_missions()
 
         for( int i = top_of_page; i <= bottom_of_page; i++ ) {
             const auto miss = umissions[i];
-            const nc_color col = u.get_active_mission() == miss ? c_light_green : c_white;
+            nc_color col = c_white;
+            if( u.get_active_mission() == miss ) {
+                col = c_ltred;
+            }
             const int y = i - top_of_page + 3;
-            trim_and_print( w_missions, y, 1, 28, static_cast<int>( selection ) == i ? hilite( col ) : col,
-                            miss->name() );
+            if( ( int )selection == i ) {
+                mvwprintz( w_missions, y, 1, hilite( col ), "%s", miss->name().c_str() );
+            } else {
+                mvwprintz( w_missions, y, 1, col, "%s", miss->name().c_str() );
+            }
         }
 
         if( selection < umissions.size() ) {
             const auto miss = umissions[selection];
-            const nc_color col = u.get_active_mission() == miss ? c_light_green : c_white;
-            std::string for_npc = "";
-            if( miss->get_npc_id() >= 0 ) {
-                npc *guy = g->find_npc( miss->get_npc_id() );
-                if( guy ) {
-                    for_npc = string_format( _( " for %s" ), guy->disp_name() );
-                }
-            }
-
-            int lines = fold_and_print( w_missions, 3, 31, getmaxx( w_missions ) - 33, col,
-                                        miss->name() + for_npc );
-
-            int y = 3 + lines;
+            int y = 4;
             if( !miss->get_description().empty() ) {
-                mvwprintz( w_missions, ++y, 31, c_white, miss->get_description() );
+                mvwprintz( w_missions, y++, 31, c_white, "%s", miss->get_description().c_str() );
             }
             if( miss->has_deadline() ) {
-                const time_point deadline = miss->get_deadline();
-                mvwprintz( w_missions, ++y, 31, c_white, _( "Deadline: %s" ), to_string( deadline ) );
+                const calendar deadline( miss->get_deadline() );
+                std::string dl = string_format( season_name_upper( deadline.get_season() ) + ", day " +
+                                                to_string( deadline.days() + 1 ) + " " + deadline.print_time() );
+                mvwprintz( w_missions, y++, 31, c_white, _( "Deadline: %s" ), dl.c_str() );
 
                 if( tab != tab_mode::TAB_COMPLETED ) {
                     // There's no point in displaying this for a completed mission.
                     // @TODO: But displaying when you completed it would be useful.
-                    const time_duration remaining = deadline - calendar::turn;
+                    const int remaining_turns = deadline.get_turn() - calendar::turn;
                     std::string remaining_time;
 
-                    if( remaining <= 0_turns ) {
+                    if( remaining_turns <= 0 ) {
                         remaining_time = _( "None!" );
                     } else if( u.has_watch() ) {
-                        remaining_time = to_string( remaining );
+                        remaining_time = calendar::print_duration( remaining_turns );
                     } else {
-                        remaining_time = to_string_approx( remaining );
+                        remaining_time = calendar::print_approx_duration( remaining_turns );
                     }
 
-                    mvwprintz( w_missions, ++y, 31, c_white, _( "Time remaining: %s" ), remaining_time.c_str() );
+                    mvwprintz( w_missions, y++, 31, c_white, _( "Time remaining: %s" ), remaining_time.c_str() );
                 }
             }
             if( miss->has_target() ) {
                 const tripoint pos = u.global_omt_location();
                 // TODO: target does not contain a z-component, targets are assumed to be on z=0
-                mvwprintz( w_missions, ++y, 31, c_white, _( "Target: (%d, %d)   You: (%d, %d)" ),
+                mvwprintz( w_missions, y++, 31, c_white, _( "Target: (%d, %d)   You: (%d, %d)" ),
                            miss->get_target().x, miss->get_target().y, pos.x, pos.y );
             }
         } else {
@@ -151,19 +147,19 @@ void game::list_missions()
                 { tab_mode::TAB_COMPLETED, _( "You haven't completed any missions!" ) },
                 { tab_mode::TAB_FAILED, _( "You haven't failed any missions!" ) }
             };
-            mvwprintz( w_missions, 4, 31, c_light_red, nope.at( tab ) );
+            mvwprintz( w_missions, 4, 31, c_ltred, "%s", nope.at( tab ).c_str() );
         }
 
         wrefresh( w_missions );
         const std::string action = ctxt.handle_input();
         if( action == "RIGHT" ) {
-            tab = static_cast<tab_mode>( static_cast<int>( tab ) + 1 );
+            tab = ( tab_mode )( ( int )tab + 1 );
             if( tab >= tab_mode::NUM_TABS ) {
                 tab = tab_mode::FIRST_TAB;
             }
             selection = 0;
         } else if( action == "LEFT" ) {
-            tab = static_cast<tab_mode>( static_cast<int>( tab ) - 1 );
+            tab = ( tab_mode )( ( int )tab - 1 );
             if( tab < tab_mode::FIRST_TAB ) {
                 tab = tab_mode::LAST_TAB;
             }
@@ -189,5 +185,7 @@ void game::list_missions()
         }
     }
 
+    werase( w_missions );
+    delwin( w_missions );
     refresh_all();
 }

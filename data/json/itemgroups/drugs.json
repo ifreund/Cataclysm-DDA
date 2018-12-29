@@ -24,8 +24,7 @@
       [ "eyedrops", 10 ],
       [ "medical_gauze", 20 ],
       [ "medical_tape", 20 ],
-      [ "saline",  10 ],
-      [ "weak_antibiotic", 30 ]
+      [ "saline",  10 ]
     ]
   },
   {

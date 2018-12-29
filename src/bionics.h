@@ -3,22 +3,17 @@
 #define BIONICS_H
 
 #include "bodypart.h"
+#include "json.h"
 #include "string_id.h"
 
-#include <map>
-#include <set>
-#include <vector>
+#include <string>
 
 class player;
-class JsonObject;
-class JsonIn;
-class JsonOut;
+
 struct quality;
 using quality_id = string_id<quality>;
 struct mutation_branch;
 using trait_id = string_id<mutation_branch>;
-struct bionic_data;
-using bionic_id = string_id<bionic_data>;
 
 struct bionic_data {
     bionic_data();
@@ -35,9 +30,6 @@ struct bionic_data {
     int charge_time = 0;
     /** Power bank size **/
     int capacity = 0;
-
-    /** True if a bionic can be used by an NPC and installed on them */
-    bool npc_usable = false;
     /** True if a bionic is a "faulty" bionic */
     bool faulty = false;
     bool power_source = false;
@@ -82,55 +74,41 @@ struct bionic_data {
      * from one CBM item, which is useful as each of those can be
      * activated independently.
      */
-    std::vector<bionic_id> included_bionics;
-
-    /**
-     * Id of another bionic which this bionic can upgrade.
-     */
-    bionic_id upgraded_bionic;
-    /**
-     * Upgrades available for this bionic (opposite to @ref upgraded_bionic).
-     */
-    std::set<bionic_id> available_upgrades;
-
-    bool is_included( const bionic_id &id ) const;
+    std::vector<std::string> included_bionics;
+    bool is_included( const std::string &id ) const;
 };
 
-struct bionic {
-    bionic_id id;
+bionic_data const &bionic_info( std::string const &id );
+
+struct bionic : public JsonSerializer, public JsonDeserializer {
+    std::string id;
     int         charge  = 0;
     char        invlet  = 'a';
     bool        powered = false;
 
     bionic()
         : id( "bio_batteries" ) { }
-    bionic( bionic_id pid, char pinvlet )
+    bionic( std::string pid, char pinvlet )
         : id( std::move( pid ) ), invlet( pinvlet ) { }
 
-    const bionic_data &info() const {
-        return *id;
+    bionic_data const &info() const {
+        return bionic_info( id );
     }
 
     int get_quality( const quality_id &quality ) const;
 
-    void serialize( JsonOut &json ) const;
-    void deserialize( JsonIn &jsin );
-};
-
-// A simpler wrapper to allow forward declarations of it. std::vector can not
-// be forward declared without a *definition* of bionic, but this wrapper can.
-class bionic_collection : public std::vector<bionic>
-{
+    using JsonSerializer::serialize;
+    void serialize( JsonOut &json ) const override;
+    using JsonDeserializer::deserialize;
+    void deserialize( JsonIn &jsin ) override;
 };
 
 void check_bionics();
-void finalize_bionics();
 void reset_bionics();
 void load_bionic( JsonObject &jsobj ); // load a bionic from JSON
+bool is_valid_bionic( std::string const &id );
 char get_free_invlet( player &p );
-std::string list_occupied_bps( const bionic_id &bio_id, const std::string &intro,
+std::string list_occupied_bps( const std::string &bio_id, const std::string &intro,
                                const bool each_bp_on_new_line = true );
-
-int bionic_manip_cos( float adjusted_skill, bool autodoc, int bionic_difficulty );
 
 #endif

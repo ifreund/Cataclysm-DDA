@@ -2,20 +2,16 @@
 #ifndef AUTO_PICKUP_H
 #define AUTO_PICKUP_H
 
-#include "enums.h"
-#include "material.h"
-
-#include <array>
-#include <iosfwd>
-#include <string>
 #include <unordered_map>
+#include <string>
 #include <vector>
+#include <locale>
+#include <algorithm>
+#include <iosfwd>
+#include "json.h"
+#include "enums.h"
 
-class JsonOut;
-class JsonIn;
-class item;
-
-class auto_pickup
+class auto_pickup : public JsonSerializer, public JsonDeserializer
 {
     private:
         void test_pattern( const int iCurrentPage, const int iCurrentLine );
@@ -39,6 +35,7 @@ class auto_pickup
                 bool bExclude;
 
                 cRules() {
+                    this->sRule = "";
                     this->bActive = false;
                     this->bExclude = false;
                 }
@@ -48,6 +45,8 @@ class auto_pickup
                     this->bActive = bActiveIn;
                     this->bExclude = bExcludeIn;
                 }
+
+                ~cRules() {};
         };
 
         mutable bool ready; //< true if map_items has been populated from vRules
@@ -73,13 +72,10 @@ class auto_pickup
     public:
         auto_pickup() : bChar( false ), ready( false ) {}
 
+        bool has_rule( const std::string &sRule );
+        void add_rule( const std::string &sRule );
+        void remove_rule( const std::string &sRule );
         void create_rule( const std::string &to_match );
-        void create_rule( const item *it );
-        bool has_rule( const item *it );
-        void add_rule( const item *it );
-        void remove_rule( const item *it );
-        bool check_special_rule( const std::vector<material_id> &materials, const std::string &rule ) const;
-
         void clear_character_rules();
         rule_state check_item( const std::string &sItemName ) const;
 
@@ -92,8 +88,9 @@ class auto_pickup
 
         bool empty() const;
 
-        void serialize( JsonOut &json ) const;
-        void deserialize( JsonIn &jsin );
+        using JsonSerializer::serialize;
+        void serialize( JsonOut &json ) const override;
+        void deserialize( JsonIn &jsin ) override;
 };
 
 auto_pickup &get_auto_pickup();

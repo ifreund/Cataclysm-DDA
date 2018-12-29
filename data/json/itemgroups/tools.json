@@ -29,10 +29,8 @@
     "//": "Industrial machinery used for construction",
     "items": [
       [ "brick_kiln", 80 ],
-      [ "kiln", 40 ],
       [ "con_mix", 120 ],
       [ "elec_jackhammer", 40 ],
-      [ "metal_smoother", 90 ],
       [ "jackhammer", 40 ]
     ]
   },
@@ -121,7 +119,7 @@
   {
     "id": "tools_medical",
     "type": "item_group",
-    "//": "Portable medical equipment for doctors and paramedics (excludes consumables)",
+    "comment": "Portable medical equipment for doctors and paramedics (excludes consumables)",
     "items": [
       [ "scalpel", 50 ],
       [ "scissors", 100 ],
@@ -138,7 +136,6 @@
     "items": [
       { "group": "tools_common", "prob": 50 },
       { "group": "tools_blacksmith", "prob": 50 },
-      [ "large_repairkit", 50 ],
       [ "puller", 100 ],
       [ "press", 100 ]
     ]
@@ -187,7 +184,6 @@
       [ "mess_kit", 20 ],
       [ "multitool", 5 ],
       [ "pockknife", 50 ],
-      [ "knife_folding", 30 ],
       [ "pur_tablets", 10 ],
       [ "ref_lighter", 20 ],
       [ "signal_flare", 20 ],

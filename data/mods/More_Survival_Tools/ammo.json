@@ -2,7 +2,7 @@
   {
     "id": "tinder",
     "type": "AMMO",
-    "category": "spare_parts",
+    "category": "other",
     "name": "tinder",
     "name_plural": "tinder",
     "description": "Flammable material, finely divided for easy combustion.",
@@ -11,7 +11,6 @@
     "price": 0,
     "bashing": 1,
     "material": "wood",
-    "flags": [ "NO_SALVAGE" ],
     "symbol": "=",
     "color": "brown",
     "count": 50,

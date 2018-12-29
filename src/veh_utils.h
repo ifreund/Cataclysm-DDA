@@ -1,7 +1,4 @@
 #pragma once
-#ifndef VEH_UTILS_H
-#define VEH_UTILS_H
-
 #include "string_id.h"
 
 class vehicle;
@@ -30,5 +27,3 @@ vehicle_part &most_repairable_part( vehicle &veh, const Character &who,
  */
 bool repair_part( vehicle &veh, vehicle_part &part, Character &who );
 }
-
-#endif

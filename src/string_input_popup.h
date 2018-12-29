@@ -1,14 +1,13 @@
-#pragma once
 #ifndef STRING_INPUT_POPUP_H
 #define STRING_INPUT_POPUP_H
 
-#include "color.h"
 #include "cursesdef.h"
 
-#include <functional>
-#include <map>
-#include <memory>
 #include <string>
+#include <memory>
+#include <map>
+#include <set>
+#include <functional>
 
 class input_context;
 struct input_event;
@@ -17,7 +16,7 @@ class utf8_wrapper;
 /**
  * Shows a window querying the user for input.
  *
- * Returns the input that was entered. If the user cancels the input (e.g. by pressing Escape),
+ * Returns the input that was entered. If the user cancels the input (e.g. by pressing escape),
  * an empty string is returned. An empty string may also be returned when the user does not enter
  * any text and confirms the input (by pressing ENTER).
  *
@@ -47,11 +46,6 @@ class string_input_popup
         std::string _text;
         std::string _description;
         std::string _identifier;
-        nc_color _title_color = c_light_red;
-        nc_color _desc_color = c_green;
-        nc_color _string_color = c_magenta;
-        nc_color _cursor_color = h_light_gray;
-        nc_color _underscore_color = c_light_gray;
         int _width = 0;
         int _max_length = -1;
         bool _only_digits = false;
@@ -60,20 +54,22 @@ class string_input_popup
         int _endx = 0;
         int _position = -1;
 
-        catacurses::window w;
+        WINDOW_PTR w_ptr;
+        WINDOW *w = nullptr;
 
         std::unique_ptr<input_context> ctxt_ptr;
         input_context *ctxt = nullptr;
 
         bool _canceled = false;
-        bool _confirmed = false;
+
+        void query_more( bool loop, bool dorefresh );
 
         void create_window();
         void create_context();
 
         void show_history( utf8_wrapper &ret );
         void add_to_history( const std::string &value ) const;
-        void draw( const utf8_wrapper &ret, const utf8_wrapper &edit, int shift ) const;
+        void draw( const utf8_wrapper &ret, int shift ) const;
 
     public:
         string_input_popup();
@@ -82,7 +78,7 @@ class string_input_popup
          * The title: short string before the actual input field.
          * It's optional, default is an empty string.
          */
-        string_input_popup &title( const std::string &value ) {
+        string_input_popup &title( std::string value ) {
             _title = value;
             return *this;
         }
@@ -92,7 +88,10 @@ class string_input_popup
          * It's optional default is an empty string.
          */
         /**@{*/
-        string_input_popup &text( const std::string &value );
+        string_input_popup &text( std::string value ) {
+            _text = value;
+            return *this;
+        }
         const std::string &text() const {
             return _text;
         }
@@ -101,7 +100,7 @@ class string_input_popup
          * Additional help text, shown below the input box.
          * It's optional, default is an empty text.
          */
-        string_input_popup &description( const std::string &value ) {
+        string_input_popup &description( std::string value ) {
             _description = value;
             return *this;
         }
@@ -113,7 +112,7 @@ class string_input_popup
          * If the input is not canceled, the new input is
          * added to the history.
          */
-        string_input_popup &identifier( const std::string &value ) {
+        string_input_popup &identifier( std::string value ) {
             _identifier = value;
             return *this;
         }
@@ -146,7 +145,7 @@ class string_input_popup
          * Integer parameters define the area (one line) where the editable
          * text is printed.
          */
-        string_input_popup &window( const catacurses::window &w, int startx, int starty, int endx );
+        string_input_popup &window( WINDOW *w, int startx, int starty, int endx );
         /**
          * Set / get the input context that is used to gather user input.
          * The class will create its own context if none is set here.
@@ -155,46 +154,6 @@ class string_input_popup
         string_input_popup &context( input_context &ctxt );
         input_context &context() const {
             return *ctxt;
-        }
-        /**
-         * Set / get the foreground color of the title.
-         * Optional, default value is c_light_red.
-         */
-        string_input_popup &title_color( const nc_color color ) {
-            _title_color = color;
-            return *this;
-        }
-        /**
-         * Set / get the foreground color of the description.
-         * Optional, default value is c_green.
-         */
-        string_input_popup &desc_color( const nc_color color ) {
-            _desc_color = color;
-            return *this;
-        }
-        /**
-         * Set / get the foreground color of the input string.
-         * Optional, default value is c_magenta.
-         */
-        string_input_popup &string_color( const nc_color color ) {
-            _string_color = color;
-            return *this;
-        }
-        /**
-         * Set / get the foreground color of the caret.
-         * Optional, default value is h_light_gray.
-         */
-        string_input_popup &cursor_color( const nc_color color ) {
-            _cursor_color = color;
-            return *this;
-        }
-        /**
-         * Set / get the foreground color of the dashed line.
-         * Optional, default value is c_light_gray.
-         */
-        string_input_popup &underscore_color( const nc_color color ) {
-            _underscore_color = color;
-            return *this;
         }
         /**@}*/
         /**
@@ -216,12 +175,6 @@ class string_input_popup
             return _canceled;
         }
         /**
-         * Returns true if query was finished via the ENTER key.
-         */
-        bool confirmed() const {
-            return _confirmed;
-        }
-        /**
          * Edit values in place. This combines: calls to @ref text to set the
          * current value, @ref query to get user input and setting the
          * value back into the parameter object (when the popup was not
@@ -233,7 +186,8 @@ class string_input_popup
         void edit( int &value );
         /**@}*/
 
-        std::map<long, std::function<bool()>> callbacks;
+        std::map<long, std::function<void()>> callbacks;
+        std::set<long> ch_code_blacklist;
 };
 
 #endif

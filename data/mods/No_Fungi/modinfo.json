@@ -10,7 +10,11 @@
   },
   {
     "type": "MONSTER_BLACKLIST",
-    "categories": [ "GROUP_FUNGI", "GROUP_FUNGI_TOWER", "GROUP_FUNGI_FLOWERS" ]
+    "categories": [
+      "GROUP_FUNGI",
+      "GROUP_FUNGI_TOWER",
+      "GROUP_FUNGI_FLOWERS"
+    ]
   },
   {
     "type": "MONSTER_BLACKLIST",
@@ -20,7 +24,6 @@
       "mon_fungaloid_young",
       "mon_zombie_fungus",
       "mon_boomer_fungus",
-      "mon_zombie_child_fungus",
       "mon_fungal_wall",
       "mon_fungaloid_queen",
       "mon_fungal_tendril",

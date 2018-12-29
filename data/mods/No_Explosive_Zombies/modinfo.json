@@ -9,6 +9,9 @@
   },
   {
     "type": "MONSTER_BLACKLIST",
-    "monsters": [ "mon_zombie_grenadier", "mon_zombie_grenadier_elite", "mon_zombie_flamer" ]
+    "monsters": [
+      "mon_zombie_grenadier",
+      "mon_zombie_grenadier_elite"
+    ]
   }
 ]

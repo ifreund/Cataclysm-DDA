@@ -1,39 +1,17 @@
 #pragma once
-#ifndef ASSIGN_H
-#define ASSIGN_H
+#ifndef H_ASSIGN
+#define H_ASSIGN
 
-#include "color.h"
-#include "debug.h"
-#include "json.h"
-#include "units.h"
-
-#include <algorithm>
-#include <map>
-#include <set>
-#include <sstream>
 #include <string>
 #include <vector>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <sstream>
 
-namespace cata
-{
-template<typename T>
-class optional;
-} // namespace cata
-namespace detail
-{
-template<typename ...T>
-class is_optional_helper : public std::false_type
-{
-};
-template<typename T>
-class is_optional_helper<cata::optional<T>> : public std::true_type
-{
-};
-} // namespace detail
-template<typename T>
-class is_optional : public detail::is_optional_helper<typename std::decay<T>::type>
-{
-};
+#include "json.h"
+#include "debug.h"
+#include "units.h"
 
 inline void report_strict_violation( JsonObject &jo, const std::string &message,
                                      const std::string &name )
@@ -57,7 +35,7 @@ bool assign( JsonObject &jo, const std::string &name, T &val, bool strict = fals
     // Object via which to report errors which differs for proportional/relative values
     JsonObject err = jo;
 
-    // Do not require strict parsing for relative and proportional values as rules
+    // dont require strict parsing for relative and proportional values as rules
     // such as +10% are well-formed independent of whether they affect base value
     if( jo.get_object( "relative" ).read( name, out ) ) {
         err = jo.get_object( "relative" );
@@ -79,28 +57,6 @@ bool assign( JsonObject &jo, const std::string &name, T &val, bool strict = fals
 
     if( out < lo || out > hi ) {
         err.throw_error( "value outside supported range", name );
-    }
-
-    if( strict && out == val ) {
-        report_strict_violation( err, "assignment does not update value", name );
-    }
-
-    val = out;
-
-    return true;
-}
-
-// Overload assign specifically for bool to avoid warnings,
-// and also to avoid potentially nonsensical interactions between relative and proportional.
-inline bool assign( JsonObject &jo, const std::string &name, bool &val, bool strict = false )
-{
-    bool out;
-
-    // Object via which to report errors which differs for proportional/relative values
-    JsonObject err = jo;
-
-    if( !jo.read( name, out ) ) {
-        return false;
     }
 
     if( strict && out == val ) {
@@ -147,10 +103,7 @@ bool assign( JsonObject &jo, const std::string &name, std::pair<T, T> &val,
     return true;
 }
 
-// Note: is_optional excludes any types based on cata::optional, which is
-// handled below in a separate function.
-template < typename T, typename std::enable_if < std::is_class<T>::value &&!is_optional<T>::value,
-           int >::type = 0 >
+template <typename T, typename std::enable_if<std::is_class<T>::value, int>::type = 0>
 bool assign( JsonObject &jo, const std::string &name, T &val, bool strict = false )
 {
     T out;
@@ -217,7 +170,6 @@ inline bool assign( JsonObject &jo, const std::string &name, units::volume &val,
             units::volume::value_type tmp;
             std::string suffix;
             std::istringstream str( obj.get_string( name ) );
-            str.imbue( std::locale::classic() );
             str >> tmp >> suffix;
             if( str.peek() != std::istringstream::traits_type::eof() ) {
                 obj.throw_error( "syntax error when specifying volume", name );
@@ -227,7 +179,7 @@ inline bool assign( JsonObject &jo, const std::string &name, units::volume &val,
             } else if( suffix == "L" ) {
                 out = units::from_milliliter( tmp * 1000 );
             } else {
-                obj.throw_error( "unrecognized volumetric unit", name );
+                obj.throw_error( "unrecognised volumetric unit", name );
             }
             return true;
         }
@@ -240,7 +192,7 @@ inline bool assign( JsonObject &jo, const std::string &name, units::volume &val,
     // Object via which to report errors which differs for proportional/relative values
     JsonObject err = jo;
 
-    // Do not require strict parsing for relative and proportional values as rules
+    // dont require strict parsing for relative and proportional values as rules
     // such as +10% are well-formed independent of whether they affect base value
     if( jo.get_object( "relative" ).has_member( name ) ) {
         units::volume tmp;
@@ -275,119 +227,6 @@ inline bool assign( JsonObject &jo, const std::string &name, units::volume &val,
     val = out;
 
     return true;
-}
-
-inline bool assign( JsonObject &jo, const std::string &name, units::mass &val,
-                    bool strict = false,
-                    const units::mass lo = units::mass_min,
-                    const units::mass hi = units::mass_max )
-{
-    auto tmp = val.value();
-    if( !assign( jo, name, tmp, strict, lo.value(), hi.value() ) ) {
-        return false;
-    }
-    val = units::mass{ tmp, units::mass::unit_type{} };
-    return true;
-}
-
-inline bool assign( JsonObject &jo, const std::string &name, nc_color &val,
-                    const bool strict = false )
-{
-    if( !jo.has_member( name ) ) {
-        return false;
-    }
-    const nc_color out = color_from_string( jo.get_string( name ) );
-    if( out == c_unset ) {
-        jo.throw_error( "invalid color name", name );
-    }
-    if( strict && out == val ) {
-        report_strict_violation( jo, "assignment does not update value", name );
-    }
-    val = out;
-    return true;
-}
-
-class time_duration;
-
-template<typename T>
-inline typename
-std::enable_if<std::is_same<typename std::decay<T>::type, time_duration>::value, bool>::type
-read_with_factor( JsonObject jo, const std::string &name, T &val, const T &factor )
-{
-    int tmp;
-    if( jo.read( name, tmp ) ) {
-        // JSON contained a raw number -> apply factor
-        val = tmp * factor;
-        return true;
-    } else if( jo.has_string( name ) ) {
-        // JSON contained a time duration string -> no factor
-        val = T::read_from_json_string( *jo.get_raw( name ) );
-        return true;
-    }
-    return false;
-}
-
-// This is a function template not a real function as that allows it to be defined
-// even when time_duration is *not* defined yet. When called with anything else but
-// time_duration as `val`, SFINAE (the enable_if) will disable this function and it
-// will be ignored. If it is called with time_duration, it is available and the
-// *caller* is responsible for including the "calendar.h" header.
-template<typename T>
-inline typename
-std::enable_if<std::is_same<typename std::decay<T>::type, time_duration>::value, bool>::type assign(
-    JsonObject &jo, const std::string &name, T &val, bool strict, const T &factor )
-{
-    T out = 0;
-    double scalar;
-
-    // Object via which to report errors which differs for proportional/relative values
-    JsonObject err = jo;
-
-    // Do not require strict parsing for relative and proportional values as rules
-    // such as +10% are well-formed independent of whether they affect base value
-    if( read_with_factor( jo.get_object( "relative" ), name, out, factor ) ) {
-        err = jo.get_object( "relative" );
-        strict = false;
-        out = out + val;
-
-    } else if( jo.get_object( "proportional" ).read( name, scalar ) ) {
-        err = jo.get_object( "proportional" );
-        if( scalar <= 0 || scalar == 1 ) {
-            err.throw_error( "invalid proportional scalar", name );
-        }
-        strict = false;
-        out = val * scalar;
-
-    } else if( read_with_factor( jo, name, out, factor ) ) {
-
-    } else {
-        return false;
-    }
-
-    if( strict && out == val ) {
-        report_strict_violation( err, "assignment does not update value", name );
-    }
-
-    val = out;
-
-    return true;
-}
-
-template<typename T>
-inline bool assign( JsonObject &jo, const std::string &name, cata::optional<T> &val,
-                    const bool strict = false )
-{
-    if( !jo.has_member( name ) ) {
-        return false;
-    }
-    if( jo.has_null( name ) ) {
-        val.reset();
-        return true;
-    }
-    if( !val ) {
-        val.emplace();
-    }
-    return assign( jo, name, *val, strict );
 }
 
 #endif

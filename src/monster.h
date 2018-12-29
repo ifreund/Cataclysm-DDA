@@ -2,21 +2,11 @@
 #ifndef MONSTER_H
 #define MONSTER_H
 
-#include "calendar.h"
 #include "creature.h"
 #include "enums.h"
 #include "int_id.h"
-
-#include <bitset>
-#include <map>
-#include <set>
-#include <string>
-#include <utility>
 #include <vector>
 
-class JsonObject;
-class JsonIn;
-class JsonOut;
 class map;
 class game;
 class item;
@@ -30,16 +20,16 @@ enum field_id : int;
 using mfaction_id = int_id<monfaction>;
 using mtype_id = string_id<mtype>;
 
-class monster;
-typedef std::map< mfaction_id, std::set< monster * > > mfactions;
+typedef std::map< mfaction_id, std::set< int > > mfactions;
 
-class mon_special_attack
+class mon_special_attack : public JsonSerializer
 {
     public:
         int cooldown = 0;
         bool enabled = true;
 
-        void serialize( JsonOut &jsout ) const;
+        using JsonSerializer::serialize;
+        void serialize( JsonOut &jsout ) const override;
         // deserialize inline in monster::load due to backwards/forwards compatibility concerns
 };
 
@@ -61,28 +51,18 @@ enum monster_effect_cache_fields {
     NUM_MEFF
 };
 
-enum monster_horde_attraction {
-    MHA_NULL = 0,
-    MHA_ALWAYS,
-    MHA_LARGE,
-    MHA_OUTDOORS,
-    MHA_OUTDOORS_AND_LARGE,
-    MHA_NEVER,
-    NUM_MONSTER_HORDE_ATTRACTION
-};
-
-class monster : public Creature
+class monster : public Creature, public JsonSerializer, public JsonDeserializer
 {
         friend class editmap;
     public:
         monster();
         monster( const mtype_id &id );
         monster( const mtype_id &id, const tripoint &pos );
-        monster( const monster & ) ;
-        monster( monster && );
+        monster( const monster & ) = default;
+        monster( monster && ) = default;
         ~monster() override;
-        monster &operator=( const monster & );
-        monster &operator=( monster && );
+        monster &operator=( const monster & ) = default;
+        monster &operator=( monster && ) = default;
 
         bool is_monster() const override {
             return true;
@@ -92,16 +72,16 @@ class monster : public Creature
         bool can_upgrade();
         void hasten_upgrade();
         void try_upgrade( bool pin_time );
-        void try_reproduce();
-        void try_biosignature();
         void spawn( const tripoint &p );
         m_size get_size() const override;
-        units::mass get_weight() const;
-        units::volume get_volume() const;
-        int get_hp( hp_part ) const override;
-        int get_hp() const override;
+        int get_hp( hp_part ) const override {
+            return hp;
+        };
+        int get_hp() const {
+            return hp;
+        }
         int get_hp_max( hp_part ) const override;
-        int get_hp_max() const override;
+        int get_hp_max() const;
         int hp_percentage() const override;
 
         // Access
@@ -112,8 +92,8 @@ class monster : public Creature
         std::string disp_name( bool possessive = false ) const override;
         std::string skin_name() const override;
         void get_HP_Bar( nc_color &color, std::string &text ) const;
-        std::pair<std::string, nc_color> get_attitude() const;
-        int print_info( const catacurses::window &w, int vStart, int vLines, int column ) const override;
+        void get_Attitude( nc_color &color, std::string &text ) const;
+        int print_info( WINDOW *w, int vStart, int vLines, int column ) const override;
 
         // Information on how our symbol should appear
         nc_color basic_symbol_color() const override;
@@ -134,14 +114,18 @@ class monster : public Creature
         // Returns false if the monster is stunned, has 0 moves or otherwise wouldn't act this turn
         bool can_act() const;
         int sight_range( int light_level ) const override;
+        using Creature::sees;
         bool made_of( const material_id &m ) const override; // Returns true if it's made of m
-        bool made_of_any( const std::set<material_id> &ms ) const override;
         bool made_of( phase_id p ) const; // Returns true if its phase is p
 
         bool avoid_trap( const tripoint &pos, const trap &tr ) const override;
 
-        void serialize( JsonOut &jsout ) const;
-        void deserialize( JsonIn &jsin );
+        void load_info( std::string data );
+
+        using JsonSerializer::serialize;
+        void serialize( JsonOut &jsout ) const override;
+        using JsonDeserializer::deserialize;
+        void deserialize( JsonIn &jsin ) override;
 
         tripoint move_target(); // Returns point at the end of the monster's current plans
         Creature *attack_target(); // Returns the creature at the end of plans (if hostile)
@@ -173,7 +157,7 @@ class monster : public Creature
          * This will cause the monster to slowly move towards the destination,
          * unless there is an overriding smell or plan.
          *
-         * @param p Destination of monster's wanderings
+         * @param p Destination of monster's wonderings
          * @param f The priority of the destination, as well as how long we should
          *          wander towards there.
          */
@@ -269,15 +253,14 @@ class monster : public Creature
 
         void absorb_hit( body_part bp, damage_instance &dam ) override;
         bool block_hit( Creature *source, body_part &bp_hit, damage_instance &d ) override;
-        void melee_attack( Creature &p );
-        void melee_attack( Creature &p, float accuracy );
-        void melee_attack( Creature &p, bool ) = delete;
-        void deal_projectile_attack( Creature *source, dealt_projectile_attack &attack,
-                                     bool print_messages = true ) override;
+        using Creature::melee_attack;
+        void melee_attack( Creature &p, bool allow_special, const matec_id &force_technique ) override;
+        void melee_attack( Creature &p, bool allow_special, const matec_id &force_technique,
+                           int hitspread ) override;
+        void deal_projectile_attack( Creature *source, dealt_projectile_attack &attack ) override;
         void deal_damage_handle_type( const damage_unit &du, body_part bp, int &damage,
                                       int &pain ) override;
-        void apply_damage( Creature *source, body_part bp, int amount,
-                           const bool bypass_med = false ) override;
+        void apply_damage( Creature *source, body_part bp, int amount ) override;
         // create gibs/meat chunks/blood etc all over the place, does not kill, can be called on a dead monster.
         void explode();
         // Let the monster die and let its body explode into gibs
@@ -293,17 +276,17 @@ class monster : public Creature
          */
         void set_hp( int hp );
 
-        /** Processes monster-specific effects before calling Creature::process_effects(). */
+        /** Processes monster-specific effects effects before calling Creature::process_effects(). */
         void process_effects() override;
         /** Processes effects which may prevent the monster from moving (bear traps, crushed, etc.).
          *  Returns false if movement is stopped. */
         bool move_effects( bool attacking ) override;
+        /** Handles any monster-specific effect application effects before calling Creature::add_eff_effects(). */
+        void add_eff_effects( effect e, bool reduced ) override;
         /** Performs any monster-specific modifications to the arguments before passing to Creature::add_effect(). */
-        void add_effect( const efftype_id &eff_id, time_duration dur, body_part bp = num_bp,
+        void add_effect( const efftype_id &eff_id, int dur, body_part bp = num_bp,
                          bool permanent = false,
-                         int intensity = 0, bool force = false, bool defererd = false ) override;
-        /** Returns a std::string containing effects for descriptions */
-        std::string get_effect_status() const;
+                         int intensity = 0, bool force = false ) override;
 
         float power_rating() const override;
         float speed_rating() const override;
@@ -319,10 +302,6 @@ class monster : public Creature
         float  get_melee() const override; // For determining attack skill when awarding dodge practice.
         float  hit_roll() const override;  // For the purposes of comparing to player::dodge_roll()
         float  dodge_roll() override;  // For the purposes of comparing to player::hit_roll()
-
-        monster_horde_attraction get_horde_attraction();
-        void set_horde_attraction( monster_horde_attraction mha );
-        bool will_join_horde( int size );
 
         /** Returns multiplier on fall damage at low velocity (knockback/pit/1 z-level, not 5 z-levels) */
         float fall_damage_mod() const override;
@@ -368,9 +347,8 @@ class monster : public Creature
         bool make_fungus();
         void make_friendly();
         /** Makes this monster an ally of the given monster. */
-        void make_ally( const monster &z );
-        // Add an item to inventory
-        void add_item( const item &it );
+        void make_ally( monster *z );
+        void add_item( item it );   // Add an item to inventory
 
         /**
          * Makes monster react to heard sound
@@ -386,14 +364,11 @@ class monster : public Creature
         field_id bloodType() const override;
         field_id gibType() const override;
 
-        using Creature::add_msg_if_npc;
-        void add_msg_if_npc( const std::string &msg ) const override;
-        void add_msg_if_npc( game_message_type type, const std::string &msg ) const override;
-        using Creature::add_msg_player_or_npc;
-        void add_msg_player_or_npc( const std::string &player_msg,
-                                    const std::string &npc_msg ) const override;
-        void add_msg_player_or_npc( game_message_type type, const std::string &player_msg,
-                                    const std::string &npc_msg ) const override;
+        void add_msg_if_npc( const char *msg, ... ) const override PRINTF_LIKE( 2, 3 );
+        void add_msg_if_npc( game_message_type type, const char *msg, ... ) const override PRINTF_LIKE( 3, 4 );
+        void add_msg_player_or_npc( const char *, const char *npc_str, ... ) const override PRINTF_LIKE( 3, 4 );
+        void add_msg_player_or_npc( game_message_type type, const char *, const char *npc_str,
+                                    ... ) const override PRINTF_LIKE( 4, 5 );
 
         // TEMP VALUES
         tripoint wander_pos; // Wander destination - Just try to move in that direction
@@ -402,15 +377,12 @@ class monster : public Creature
 
         // DEFINING VALUES
         int friendly;
-        int anger = 0;
-        int morale = 0;
+        int anger, morale;
         mfaction_id faction; // Our faction (species, for most monsters)
         int mission_id; // If we're related to a mission
         const mtype *type;
         bool no_extra_death_drops;    // if true, don't spawn loot items as part of death
         bool no_corpse_quiet = false; //if true, monster dies quietly and leaves no corpse
-        bool death_drops =
-            true; // Turned to false for simulating monsters during distant missions so they don't drop in sight
         bool is_dead() const;
         bool made_footstep;
         std::string unique_name; // If we're unique
@@ -429,7 +401,6 @@ class monster : public Creature
         }
 
         short ignoring;
-        cata::optional<time_point> lastseen_turn;
 
         // Stair data.
         int staircount;
@@ -450,10 +421,7 @@ class monster : public Creature
          */
         void init_from_item( const item &itm );
 
-        time_point last_updated = calendar::time_of_cataclysm;
-        int last_baby;
-        int last_biosig;
-
+        int last_updated;
         /**
          * Do some cleanup and caching as monster is being unloaded from map.
          */
@@ -478,11 +446,6 @@ class monster : public Creature
         int next_upgrade_time();
         bool upgrades;
         int upgrade_time;
-        bool reproduces;
-        int baby_timer;
-        bool biosignatures;
-        int biosig_timer;
-        monster_horde_attraction horde_attraction;
         /** Found path. Note: Not used by monsters that don't pathfind! **/
         std::vector<tripoint> path;
         std::bitset<NUM_MEFF> effect_cache;
@@ -490,9 +453,6 @@ class monster : public Creature
     protected:
         void store( JsonOut &jsout ) const;
         void load( JsonObject &jsin );
-
-        /** Processes monster-specific effects of an effect. */
-        void process_one_effect( effect &e, bool is_new ) override;
 };
 
 #endif

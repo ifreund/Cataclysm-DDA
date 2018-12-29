@@ -25,10 +25,6 @@
         "name" : "Pick a lock"
     },{
         "type" : "item_action",
-        "id" : "deploy_furn",
-        "name" : "Deploy item"
-    },{
-        "type" : "item_action",
         "id" : "CROWBAR",
         "name" : "Pry crate, window or door"
     },{
@@ -54,7 +50,7 @@
     },{
         "type" : "item_action",
         "id" : "HOTPLATE",
-        "name" : "Heat up food (with it)"
+        "name" : "Heat up food"
     },{
         "type" : "item_action",
         "id" : "MISC_REPAIR",
@@ -71,10 +67,6 @@
         "type" : "item_action",
         "id" : "GUN_REPAIR",
         "name" : "Repair a gun"
-    },{
-        "type" : "item_action",
-        "id" : "DIRECTIONAL_HOLOGRAM",
-        "name" : "Create a moving hologram"
     },{
         "type" : "item_action",
         "id" : "ROBOTCONTROL",
@@ -157,8 +149,12 @@
         "name" : "Use holster"
     },{
         "type" : "item_action",
-        "id" : "saw_barrel",
+        "id" : "SAW_BARREL",
         "name" : "Saw down barrel"
+    },{
+        "type" : "item_action",
+        "id" : "DIG",
+        "name" : "Clear rubble"
     },{
         "type" : "item_action",
         "id" : "ACIDBOMB_ACT",
@@ -230,7 +226,7 @@
     },{
         "type" : "item_action",
         "id" : "CAMERA",
-        "name" : "Use camera"
+        "name" : "Use"
     },{
         "type" : "item_action",
         "id" : "CAN_GOO",
@@ -238,10 +234,6 @@
     },{
         "type" : "item_action",
         "id" : "CAPTURE_MONSTER_ACT",
-        "name" : "Capture/place"
-    },{
-        "type" : "item_action",
-        "id" : "CAPTURE_MONSTER_VEH",
         "name" : "Capture/place"
     },{
         "type" : "item_action",
@@ -261,14 +253,6 @@
         "name" : "Chew"
     },{
         "type" : "item_action",
-        "id" : "CLEAR_RUBBLE",
-        "name" : "Clear rubble"
-    },{
-        "type" : "item_action",
-        "id" : "COIN_FLIP",
-        "name" : "Flip"
-    },{
-        "type" : "item_action",
         "id" : "COKE",
         "name" : "Snort coke"
     },{
@@ -278,14 +262,6 @@
     },{
         "type" : "item_action",
         "id" : "COMBATSAW_ON",
-        "name" : "Turn off"
-    },{
-        "type" : "item_action",
-        "id" : "E_COMBATSAW_OFF",
-        "name" : "Turn on"
-    },{
-        "type" : "item_action",
-        "id" : "E_COMBATSAW_ON",
         "name" : "Turn off"
     },{
         "type" : "item_action",
@@ -301,20 +277,8 @@
         "name" : "Turn off"
     },{
         "type" : "item_action",
-        "id" : "ECS_LAJATANG_OFF",
-        "name" : "Turn on"
-    },{
-        "type" : "item_action",
-        "id" : "ECS_LAJATANG_ON",
-        "name" : "Turn off"
-    },{
-        "type" : "item_action",
         "id" : "DATURA",
         "name" : "Eat"
-    },{
-        "type" : "item_action",
-        "id" : "DIG",
-        "name" : "Dig pit"
     },{
         "type" : "item_action",
         "id" : "DIRECTIONAL_ANTENNA",
@@ -334,7 +298,7 @@
     },{
         "type" : "item_action",
         "id" : "ECIG",
-        "name" : { "ctxt": "ECIG", "str": "Smoke" }
+        "name" : "Smoke"
     },{
         "type" : "item_action",
         "id" : "EHANDCUFFS",
@@ -355,10 +319,6 @@
         "type" : "item_action",
         "id" : "EYEDROPS",
         "name" : "Use"
-    },{
-        "type" : "item_action",
-        "id" : "FILL_PIT",
-        "name" : "Fill pit / tamp ground"
     },{
         "type" : "item_action",
         "id" : "FIRECRACKER",
@@ -401,6 +361,10 @@
         "name" : "Take"
     },{
         "type" : "item_action",
+        "id" : "FUN_HALLU",
+        "name" : "Eat"
+    },{
+        "type" : "item_action",
         "id" : "GRANADE",
         "name" : "Activate"
     },{
@@ -413,7 +377,7 @@
         "name" : "Activate"
     },{
         "type" : "item_action",
-        "id" : "detach_gunmods",
+        "id" : "GUN_DETACH_GUNMODS",
         "name" : "Detach gunmods"
     },{
         "type" : "item_action",
@@ -426,7 +390,7 @@
     },{
         "type" : "item_action",
         "id" : "HEAT_FOOD",
-        "name" : "Heat up food (in it)"
+        "name" : "Heat up food"
     },{
         "type" : "item_action",
         "id" : "HONEYCOMB",
@@ -447,10 +411,6 @@
         "type" : "item_action",
         "id" : "LADDER",
         "name" : "Place"
-    },{
-        "type" : "item_action",
-        "id" : "MAGIC_8_BALL",
-        "name" : "Ask"
     },{
         "type" : "item_action",
         "id" : "MARLOSS",
@@ -493,27 +453,15 @@
         "name" : "Turn off"
     },{
         "type" : "item_action",
-        "id" : "GASMASK",
-        "name" : "Prepare to use"
-    },{
-        "type" : "item_action",
-        "id" : "SOLARPACK",
-        "name" : "Unfold"
-    },{
-        "type" : "item_action",
-        "id" : "SOLARPACK_OFF",
-        "name" : "Fold"
-    },{
-        "type" : "item_action",
         "id" : "MULTICOOKER",
         "name" : "Cook"
     },{
         "type" : "item_action",
-        "id" : "mutagen",
+        "id" : "MUTAGEN",
         "name" : "Consume"
     },{
         "type" : "item_action",
-        "id" : "mutagen_iv",
+        "id" : "MUT_IV",
         "name" : "Inject"
     },{
         "type" : "item_action",
@@ -545,6 +493,10 @@
         "name" : "Squeeze"
     },{
         "type" : "item_action",
+        "id" : "PIPEBOMB_ACT",
+        "name" : "Activate"
+    },{
+        "type" : "item_action",
         "id" : "PLANTBLECH",
         "name" : "Consume"
     },{
@@ -554,10 +506,10 @@
     },{
         "type" : "item_action",
         "id" : "PORTABLE_GAME",
-        "name" : { "ctxt": "PORTABLE_GAME", "str": "Play" }
+        "name" : "Play"
     },{
         "type" : "item_action",
-        "id" : "deploy_tent",
+        "id" : "PORTABLE_STRUCTURE",
         "name" : "Put up"
     },{
         "type" : "item_action",
@@ -574,10 +526,6 @@
     },{
         "type" : "item_action",
         "id" : "PURIFY_IV",
-        "name" : "Inject"
-    },{
-        "type" : "item_action",
-        "id" : "PURIFY_SMART",
         "name" : "Inject"
     },{
         "type" : "item_action",
@@ -654,7 +602,7 @@
     },{
         "type" : "item_action",
         "id" : "SMOKING",
-        "name" : { "ctxt": "SMOKING", "str": "Smoke" }
+        "name" : "Smoke"
     },{
         "type" : "item_action",
         "id" : "SPRAY_CAN",
@@ -701,7 +649,7 @@
         "name" : "Inject"
     },{
         "type" : "item_action",
-        "id" : "BLOOD_DRAW",
+        "id" : "VACUTAINER",
         "name" : "Draw some blood"
     },{
         "type" : "item_action",
@@ -762,7 +710,7 @@
     },{
         "type" : "item_action",
         "id" : "musical_instrument",
-        "name" : { "ctxt": "musical_instrument", "str": "Play" }
+        "name" : "Play"
     },{
         "type" : "item_action",
         "id" : "place_monster",
@@ -783,55 +731,5 @@
         "type" : "item_action",
         "id" : "ups_based_armor",
         "name" : "Activate/deactivate"
-    },
-    {
-        "type" : "item_action",
-        "id" : "CATTLEFODDER",
-        "name" : "Place"
-    },
-    {
-        "type" : "item_action",
-        "id" : "BIRDFOOD",
-        "name" : "Place"
-    },
-    {
-        "type" : "item_action",
-        "id" : "install_bionic",
-        "name" : "Install bionic"
-    },
-    {
-        "type" : "item_action",
-        "id" : "CHOP_TREE",
-        "name" : "Chop down a tree"
-    },
-    {
-        "type" : "item_action",
-        "id" : "CHOP_LOGS",
-        "name" : "Chop a Tree Trunk into logs"
-    },
-    {
-        "type" : "item_action",
-        "id" : "BREAK_STICK",
-        "name" : "Break stick"
-    },
-    {
-        "type" : "item_action",
-        "id" : "WEAK_ANTIBIOTIC",
-        "name" : "Take"
-    },
-    {
-        "type" : "item_action",
-        "id" : "DISASSEMBLE",
-        "name" : "Get content"
-    },
-    {
-        "type" : "item_action",
-        "id" : "STRONG_ANTIBIOTIC",
-        "name" : "Take"
-    },
-    {
-        "type" : "item_action",
-        "id" : "PANACEA",
-        "name" : "Take"
     }
 ]

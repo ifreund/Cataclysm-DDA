@@ -1,7 +1,5 @@
 #include "overlay_ordering.h"
 
-#include "json.h"
-
 std::map<trait_id, int> base_mutation_overlay_ordering;
 std::map<trait_id, int> tileset_mutation_overlay_ordering;
 

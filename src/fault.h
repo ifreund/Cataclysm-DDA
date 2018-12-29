@@ -3,10 +3,7 @@
 #define FAULT_H
 
 #include "string_id.h"
-
-#include <map>
-
-class JsonObject;
+#include "json.h"
 
 class fault;
 using fault_id = string_id<fault>;

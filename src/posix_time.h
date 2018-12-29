@@ -4,8 +4,8 @@
 /* Windows lacks the nanosleep() function. The following code was stuffed
    together from GNUlib (http://www.gnu.org/software/gnulib/), which is
    licensed under the GPLv3. */
-#include <cerrno>
-#include <ctime>
+#include <time.h>
+#include <errno.h>
 
 enum { BILLION = 1000 * 1000 * 1000 };
 
@@ -18,8 +18,7 @@ extern "C" {
 
 // Apparently this is defined by pthread.h, if that header had been included.
 // _INC_TIME is defined in time.h for MSVC
-// __struct_timespec_defined is defined in time.h for MinGW on Windows
-#if !defined(_TIMESPEC_DEFINED) && !defined(_INC_TIME) && ! __struct_timespec_defined
+#if !defined(_TIMESPEC_DEFINED) && !defined(_INC_TIME)
 #define _TIMESPEC_DEFINED
 struct timespec {
     time_t tv_sec;
@@ -36,7 +35,7 @@ struct timespec {
 /* The Win32 function Sleep() has a resolution of about 15 ms and takes
    at least 5 ms to execute.  We use this function for longer time periods.
    Additionally, we use busy-looping over short time periods, to get a
-   resolution of about 0.01 ms.  In order to measure such short time spans,
+   resolution of about 0.01 ms.  In order to measure such short timespans,
    we use the QueryPerformanceCounter() function.  */
 
 int

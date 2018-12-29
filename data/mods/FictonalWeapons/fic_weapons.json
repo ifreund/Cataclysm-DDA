@@ -48,7 +48,6 @@
   {
    "id": "gunsword",
     "type": "GUN",
-    "reload_noise_volume": 10,
     "symbol": "I",
     "color": "light_gray",
     "name": "gunsword",
@@ -75,7 +74,6 @@
   {
    "id": "gunknife",
     "type": "GUN",
-    "reload_noise_volume": 10,
     "symbol": "i",
     "color": "light_gray",
     "name": "gunknife",
@@ -98,13 +96,12 @@
     "reload": 80,
     "loudness" : 50,
     "valid_mod_locations": [[ "barrel", 1 ],[ "bore", 1 ],[ "grip", 1 ],[ "mechanism", 2 ],[ "muzzle", 1 ]],
-    "techniques": ["WBLOCK_1"],
+    "techniques": ["WBLOCK_2"],
     "qualities": [["CUT", 1], ["BUTCHER", 14]]
   },
   {
     "id": "50pistol",
     "type": "GUN",
-    "reload_noise_volume": 10,
     "symbol": "[",
     "color": "dark_gray",
     "name": "FiveO handcannon",
@@ -133,7 +130,7 @@
     "type": "GUN",
     "color": "dark_gray",
     "name": "M919",
-    "description": "Manufactured by Sarah and Suhl machine company of Portland, Maine, the M919 submachine gun is the most accurate 9x19mm submachine gun on the market.  Intended for police use, it is fitted with an integral grenade launcher.",
+    "description": "Manufactured by Sarah and Suhl machine company of Portland, Maine, the M919 submachine gun is the most accurate 9mm submachine gun on the market.  Intended for police use, it is fitted with an integral grenade launcher.",
     "weight": 3100,
     "volume": 5,
     "price": 430000,
@@ -191,9 +188,8 @@
     ]
   },
   {
-    "id": "light_carb",
+    "id": "ltcarb",
     "type": "GUN",
-    "reload_noise_volume": 10,
     "symbol": "(",
     "color": "dark_gray",
     "name": "L.T. carbine",
@@ -220,7 +216,6 @@
   {
     "id": "arccan",
     "type": "GUN",
-    "reload_noise_volume": 10,
     "symbol": "(",
     "color": "dark_gray",
     "name": "arc cannon",

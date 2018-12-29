@@ -2,43 +2,22 @@
 #ifndef CATA_UTILITY_H
 #define CATA_UTILITY_H
 
+#include <utility>
+#include <string>
+#include <vector>
 #include <fstream>
 #include <functional>
-#include <string>
-#include <utility>
-#include <vector>
 
 class item;
 class Creature;
+class map_item_stack;
 struct tripoint;
-namespace units
-{
-template<typename V, typename U>
-class quantity;
-class mass_in_gram_tag;
-using mass = quantity<int, mass_in_gram_tag>;
-}
-class JsonIn;
-class JsonOut;
 
 /**
  * Greater-than comparison operator; required by the sort interface
  */
-struct pair_greater_cmp_first {
-    template< class T, class U >
-    bool operator()( const std::pair<T, U> &a, const std::pair<T, U> &b ) const {
-        return a.first > b.first;
-    }
-
-};
-
-/**
- * For use with smart pointers when you don't actually want the deleter to do
- * anything.
- */
-struct null_deleter {
-    template<typename T>
-    void operator()( T * ) const {}
+struct pair_greater_cmp {
+    bool operator()( const std::pair<int, tripoint> &a, const std::pair<int, tripoint> &b ) const;
 };
 
 /**
@@ -69,44 +48,24 @@ inline int fast_floor( double v )
  */
 double round_up( double val, unsigned int dp );
 
-/** Divide @p num by @p den, rounding up
-*
-* @p num must be non-negative, @p den must be positive, and @c num+den must not overflow.
-*/
-template<typename T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
-T divide_round_up( T num, T den )
-{
-    return ( num + den - 1 ) / den;
-}
-
-/** Divide @p num by @p den, rounding up
- *
- * @p num must be non-negative, @p den must be positive, and @c num+den must not overflow.
- */
-template<typename T, typename U>
-T divide_round_up( units::quantity<T, U> num, units::quantity<T, U> den )
-{
-    return divide_round_up( num.value(), den.value() );
-}
-
 /**
- * Determine whether a value is between two given boundaries.
+ * Determine whether a value is between two given boundries.
  *
  * @param test Value to be tested.
- * @param down Lower boundary for value.
- * @param up Upper boundary for value.
+ * @param down Lower boundry for value.
+ * @param up Upper boundry for value.
  *
- * @return True if test value is greater than lower boundary and less than upper
- *         boundary, otherwise returns false.
+ * @return True if test value is greater than lower boundry and less than upper
+ *         boundry, otherwise returns false.
  */
 bool isBetween( int test, int down, int up );
 
 /**
  * Perform case sensitive search for a query string inside a subject string.
  *
- * Searches for string given by qry inside a subject string given by str.
+ * Searchs for string given by qry inside a subject string given by str.
  *
- * @param str Subject to search for occurrence of the query string.
+ * @param str Subject to search for occurance of the query string.
  * @param qry Query string to search for in str
  *
  * @return true if the query string is found at least once within the subject
@@ -114,29 +73,20 @@ bool isBetween( int test, int down, int up );
  */
 bool lcmatch( const std::string &str, const std::string &qry );
 
-/**
- * Matches text case insensitive with the include/exclude rules of the filter
- *
- * Multiple includes/excludes are possible
- *
- * Examle: bank,-house,tank,-car
- * Will match text containing tank or bank while not containing house or car
- *
- * @param text String to be matched
- * @param filter String with include/exclude rules
- *
- * @return true if include/exclude rules pass. See Example.
- */
-bool match_include_exclude( const std::string &text, std::string filter );
+std::vector<map_item_stack> filter_item_stacks( std::vector<map_item_stack> stack,
+        std::string filter );
+int list_filter_high_priority( std::vector<map_item_stack> &stack, std::string priorities );
+int list_filter_low_priority( std::vector<map_item_stack> &stack, int start,
+                              std::string priorities );
 
 /**
  * Basic logistic function.
  *
- * Calculates the value at a single point on a standard logistic curve.
+ * Calculates the value at a single point on a stanndard logistic curve.
  *
- * @param t Point on logistic curve to retrieve value for
+ * @param t Poiint on logistic curve to retrieve value for
  *
- * @return Value of the logistic curve at the given point
+ * @return Value of the logistic curve at the given poinit
  */
 double logarithmic( double t );
 
@@ -150,7 +100,7 @@ double logarithmic( double t );
  * @param max t-value that should yield an output of 0 on the scaled curve.
  * @param pos t-value to calculate the output for.
  *
- * @return The value of the scaled logistic curve at point pos.
+ * @return The value of the scaled logstic curve at point pos.
  */
 double logarithmic_range( int min, int max, int pos );
 
@@ -162,14 +112,14 @@ double logarithmic_range( int min, int max, int pos );
  * reduced to meet this constraint.
  *
  * Giving a value of zero for min or max indicates that there is no minimum or
- * maximum boundary, respectively.
+ * maximum boundry, respectively.
  *
  * @param val The base value that the modifier will be applied to
  * @param mod The desired modifier to be added to the base value
  * @param max The desired maximum value of the base value after modification, or zero.
- * @param min The desired minimum value of the base value after modification, or zero.
+ * @param min The desired manimum value of the base value after modification, or zero.
  *
- * @returns Value of mod, possibly altered to respect the min and max boundaries
+ * @returns Value of mod, possibly altered to respect the min and max boundries
  */
 int bound_mod_to_vals( int val, int mod, int max, int min );
 
@@ -180,7 +130,7 @@ int bound_mod_to_vals( int val, int mod, int max, int min );
  * "km/h", "ms/s" or "mph".  Used to add abbreviated unit labels to the output of
  * @ref convert_velocity.
  *
- * @param vel_units type of velocity desired (i.e. wind or vehicle)
+ * @param vel_units type of velocity desired (ie wind or vehicle)
  *
  * @return name of unit.
  */
@@ -200,7 +150,7 @@ const char *weight_units();
  * Create an abbreviated units label for a volume value.
  *
  * Returns the abbreviated name for the volume unit for the user selected unit system,
- * i.e. "c", "L", or "qt". Used to add unit labels to the output of @ref convert_volume.
+ * ie "c", "L", or "qt". Used to add unit labels to the output of @ref convert_volume.
  *
  * @return name of unit.
  */
@@ -220,7 +170,7 @@ const char *volume_units_long();
  * Convert internal velocity units to units defined by user.
  *
  * @param velocity A velocity value in internal units.
- * @param vel_units General type of item this velocity is for (e.g. vehicles or wind)
+ * @param vel_units General type of item this velocity is for (eg vehicles or wind)
  *
  * @returns Velocity in the user selected measurement system and in appropriate
  *          units for the object being measured.
@@ -234,7 +184,7 @@ double convert_velocity( int velocity, const units_type vel_units );
  *
  * @returns Weight converted to user selected unit
  */
-double convert_weight( const units::mass &weight );
+double convert_weight( int weight );
 
 /**
  * Convert volume from ml to units defined by user.
@@ -248,18 +198,13 @@ double convert_volume( int volume );
 double convert_volume( int volume, int *out_scale );
 
 /**
- * Convert a temperature from degrees Fahrenheit to degrees Celsius.
+ * Convert a temperature from degrees fahrenheit to degrees celsius.
+ *
+ * @param fahrenheit Temperature in degrees F.
  *
  * @return Temperature in degrees C.
  */
 double temp_to_celsius( double fahrenheit );
-
-/**
- * Convert a temperature from degrees Fahrenheit to degrees Kelvin.
- *
- * @return Temperature in degrees K.
- */
-double temp_to_kelvin( double fahrenheit );
 
 /**
  * Clamp (number and space wise) value to with,
@@ -384,6 +329,7 @@ class ofstream_wrapper
  */
 bool write_to_file( const std::string &path, const std::function<void( std::ostream & )> &writer,
                     const char *fail_message );
+class JsonIn;
 class JsonDeserializer;
 /**
  * Try to open and read from given file using the given callback.
@@ -460,52 +406,7 @@ std::istream &safe_getline( std::istream &ins, std::string &str );
  *
  */
 
-std::string obscure_message( const std::string &str, std::function<char()> f );
+std::string obscure_message( const std::string &str, std::function<char( void )> f );
 
-/**
- * @group JSON (de)serialization wrappers.
- *
- * The functions here provide a way to (de)serialize objects without actually
- * including "json.h". The `*_wrapper` function create the JSON stream instances
- * and therefor require "json.h", but the caller doesn't. Callers should just
- * forward the stream reference to the actual (de)serialization function.
- *
- * The inline function do this by calling `T::(de)serialize` (which is assumed
- * to exist with the proper signature).
- *
- * @throws std::exception Deserialization functions may throw upon malformed
- * JSON or unexpected/invalid content.
- */
-/**@{*/
-std::string serialize_wrapper( const std::function<void( JsonOut & )> &callback );
-void deserialize_wrapper( const std::function<void( JsonIn & )> &callback,
-                          const std::string &data );
-
-template<typename T>
-inline std::string serialize( const T &obj )
-{
-    return serialize_wrapper( [&obj]( JsonOut & jsout ) {
-        obj.serialize( jsout );
-    } );
-}
-
-template<typename T>
-inline void deserialize( T &obj, const std::string &data )
-{
-    deserialize_wrapper( [&obj]( JsonIn & jsin ) {
-        obj.deserialize( jsin );
-    }, data );
-}
-/**@}*/
-
-/**
- * \brief Returns true iff s1 starts with s2
- */
-bool string_starts_with( const std::string &s1, const std::string &s2 );
-
-/**
- * \brief Returns true iff s1 ends with s2
- */
-bool string_ends_with( const std::string &s1, const std::string &s2 );
 
 #endif // CAT_UTILITY_H

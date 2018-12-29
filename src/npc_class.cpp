@@ -1,12 +1,10 @@
 #include "npc_class.h"
-
+#include "skill.h"
 #include "debug.h"
+#include "rng.h"
 #include "generic_factory.h"
 #include "item_group.h"
 #include "mutation.h"
-#include "rng.h"
-#include "skill.h"
-#include "trait_group.h"
 
 #include <list>
 
@@ -23,9 +21,9 @@ static const std::array<npc_class_id, 17> legacy_ids = {{
         npc_class_id( "NC_BOUNTY_HUNTER" ),  // Resourceful and well-armored
         npc_class_id( "NC_THUG" ),           // Moderate melee skills and poor equipment
         npc_class_id( "NC_SCAVENGER" ),      // Good with pistols light weapons
-        npc_class_id( "NC_ARSONIST" ),       // Evacuation Center, restocks Molotovs and anarchist type stuff
+        npc_class_id( "NC_ARSONIST" ),       // Evacuation Center, restocks moltovs and anarcist type stuff
         npc_class_id( "NC_HUNTER" ),         // Survivor type good with bow or rifle
-        npc_class_id( "NC_SOLDIER" ),        // Well equipped and trained combatant, good with rifles and melee
+        npc_class_id( "NC_SOLDIER" ),        // Well equiped and trained combatant, good with rifles and melee
         npc_class_id( "NC_BARTENDER" ),      // Stocks alcohol
         npc_class_id( "NC_JUNK_SHOPKEEP" )   // Stocks wide range of items...
     }
@@ -50,6 +48,10 @@ npc_class_id NC_BARTENDER( "NC_BARTENDER" );
 npc_class_id NC_JUNK_SHOPKEEP( "NC_JUNK_SHOPKEEP" );
 
 generic_factory<npc_class> npc_class_factory( "npc_class" );
+
+/** @relates string_id */
+template<>
+const npc_class_id string_id<npc_class>::NULL_ID( "NC_NONE" );
 
 /** @relates string_id */
 template<>
@@ -147,8 +149,10 @@ void npc_class::check_consistency()
             }
         }
 
-        if( !cl.traits.is_valid() ) {
-            debugmsg( "Trait group %s is undefined", cl.traits.c_str() );
+        for( const auto &pr : cl.traits ) {
+            if( !pr.first.is_valid() ) {
+                debugmsg( "Invalid trait %s", pr.first.c_str() );
+            }
         }
     }
 }
@@ -237,30 +241,10 @@ void npc_class::load( JsonObject &jo, const std::string & )
     optional( jo, was_loaded, "weapon_override", weapon_override );
 
     if( jo.has_array( "traits" ) ) {
-        traits = trait_group::load_trait_group( *jo.get_raw( "traits" ), "collection" );
-    }
-
-    /* Mutation rounds can be specified as follows:
-     *   "mutation_rounds": {
-     *     "ANY" : { "constant": 1 },
-     *     "INSECT" : { "rng": [1, 3] }
-     *   }
-     */
-    if( jo.has_object( "mutation_rounds" ) ) {
-        const std::map<std::string, mutation_category_trait> &mutation_categories =
-            mutation_category_trait::get_all();
-        auto jo2 = jo.get_object( "mutation_rounds" );
-        for( auto &mutation : jo2.get_member_names() ) {
-            auto category_match = [&mutation]( std::pair<const std::string, mutation_category_trait> p ) {
-                return p.second.id == mutation;
-            };
-            if( std::find_if( mutation_categories.begin(), mutation_categories.end(),
-                              category_match ) == mutation_categories.end() ) {
-                debugmsg( "Unrecognized mutation category %s", mutation );
-                continue;
-            }
-            auto distrib = jo2.get_object( mutation );
-            mutation_rounds[mutation] = load_distribution( distrib );
+        JsonArray jarr = jo.get_array( "traits" );
+        while( jarr.has_more() ) {
+            JsonArray jarr_in = jarr.next_array();
+            traits[ trait_id( jarr_in.get_string( 0 ) ) ] = jarr_in.get_int( 1 );
         }
     }
 
@@ -286,9 +270,9 @@ void npc_class::load( JsonObject &jo, const std::string & )
 
 const npc_class_id &npc_class::from_legacy_int( int i )
 {
-    if( i < 0 || static_cast<size_t>( i ) >= legacy_ids.size() ) {
+    if( i < 0 || ( size_t )i >= legacy_ids.size() ) {
         debugmsg( "Invalid legacy class id: %d", i );
-        return npc_class_id::NULL_ID();
+        return npc_class_id::NULL_ID;
     }
 
     return legacy_ids[ i ];

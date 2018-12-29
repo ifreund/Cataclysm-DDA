@@ -1,12 +1,5 @@
 [
   {
-    "id": "CONTROL_MANY_ELECTRONICS",
-    "type": "keybinding",
-    "category": "VEHICLE",
-    "name": "Control multiple electronics",
-    "bindings":[ { "input_method": "keyboard", "key": "E" } ]
-  },
-  {
     "id": "CONTROL_ENGINES",
     "type": "keybinding",
     "category": "VEHICLE",
@@ -105,13 +98,6 @@
     "bindings":[ { "input_method": "keyboard", "key": "f" } ]
   },
   {
-    "id": "TOGGLE_FREEZER",
-    "type": "keybinding",
-    "category": "VEHICLE",
-    "name": "Toggle freezer",
-    "bindings":[ { "input_method": "keyboard", "key": "r" } ]
-  },
-  {
     "id": "TOGGLE_HEADLIGHT",
     "type": "keybinding",
     "category": "VEHICLE",
@@ -173,13 +159,6 @@
     "category": "VEHICLE",
     "name": "Toggle stereo",
     "bindings":[ { "input_method": "keyboard", "key": "m" } ]
-  },
-  {
-    "id": "TOGGLE_WATER_PURIFIER",
-    "type": "keybinding",
-    "category": "VEHICLE",
-    "name": "Toggle water purifiers",
-    "bindings":[ { "input_method": "keyboard", "key": "p" } ]
   },
   {
     "id": "TOGGLE_TRACKING",

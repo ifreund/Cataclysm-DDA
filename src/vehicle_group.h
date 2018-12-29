@@ -2,23 +2,19 @@
 #ifndef VEHICLE_GROUP_H
 #define VEHICLE_GROUP_H
 
+#include "json.h"
 #include "mapgen.h"
-#include "optional.h"
-#include "rng.h"
-#include "string_id.h"
+#include <string>
+#include <memory>
 #include "weighted_list.h"
 
-#include <memory>
-#include <unordered_map>
-
-class JsonObject;
 class VehicleGroup;
 using vgroup_id = string_id<VehicleGroup>;
 class VehicleSpawn;
 using vspawn_id = string_id<VehicleSpawn>;
 struct vehicle_prototype;
 using vproto_id = string_id<vehicle_prototype>;
-struct point;
+
 extern std::unordered_map<vgroup_id, VehicleGroup> vgroups;
 
 /**
@@ -51,7 +47,7 @@ struct VehicleFacings {
     VehicleFacings( JsonObject &jo, const std::string &key );
 
     int pick() const {
-        return random_entry( values );
+        return values[rng( 0, values.size() - 1 )];
     }
 
     std::vector<int> values;
@@ -65,7 +61,9 @@ struct VehicleLocation {
         return facings.pick();
     }
 
-    point pick_point() const;
+    point pick_point() const {
+        return point( x.get(), y.get() );
+    }
 
     jmapgen_int x;
     jmapgen_int y;
@@ -98,7 +96,7 @@ struct VehiclePlacement {
 class VehicleFunction
 {
     public:
-        virtual ~VehicleFunction() = default;
+        virtual ~VehicleFunction() { }
         virtual void apply( map &m, const std::string &terrainid ) const = 0;
 };
 
@@ -108,10 +106,10 @@ class VehicleFunction_builtin : public VehicleFunction
 {
     public:
         VehicleFunction_builtin( const vehicle_gen_pointer &func ) : func( func ) {}
-        ~VehicleFunction_builtin() override = default;
+        ~VehicleFunction_builtin() override { }
 
         /**
-         * This will invoke the vehicle spawning function on the map.
+         * This will invoke the vehicle spawning fuction on the map.
          * @param m The map on which to add the vehicle.
          * @param terrainid The name of the terrain being spawned on.
          */
@@ -127,10 +125,10 @@ class VehicleFunction_json : public VehicleFunction
 {
     public:
         VehicleFunction_json( JsonObject &jo );
-        ~VehicleFunction_json() override = default;
+        ~VehicleFunction_json() override { }
 
         /**
-         * This will invoke the vehicle spawning function on the map.
+         * This will invoke the vehicle spawning fuction on the map.
          * @param m The map on which to add the vehicle.
          * @param terrain_name The name of the terrain being spawned on. This is ignored by the json handler.
          */
@@ -143,7 +141,7 @@ class VehicleFunction_json : public VehicleFunction
         int status;
 
         std::string placement;
-        cata::optional<VehicleLocation> location;
+        std::unique_ptr<VehicleLocation> location;
 };
 
 /**

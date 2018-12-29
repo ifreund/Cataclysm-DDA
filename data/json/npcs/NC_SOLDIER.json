@@ -80,7 +80,7 @@
     "id" : "NC_SOLDIER_extra",
     "items":[
       ["null", 5],
-      ["molle_pack", 40],
+      ["backpack", 40],
       ["rucksack", 10]
     ]
   },{
@@ -112,7 +112,7 @@
     "id" : "NC_SOLDIER_rifle",
     "items":[
       ["m4a1", 90],
-      ["m14ebr", 10]
+      ["m1a", 10]
     ]
   },{
     "type" : "item_group",
@@ -133,7 +133,7 @@
         ["UPS_off", 5],
         ["adv_UPS_off", 3],
         ["chestrig", 10],
-        ["backpack", 8],
+        ["molle_pack", 8],
         ["dump_pouch", 20],
         ["legrig", 10],
         ["under_armor", 20],
@@ -143,29 +143,11 @@
         ["e_tool", 15],
         ["chocolate", 30],
         ["can_beans", 20],
-        ["mre_chilibeans_box", 45],
-        ["mre_bbqbeef_box", 45],
-        ["mre_chickennoodle_box", 45],
-        ["mre_spaghetti_box", 45],
-        ["mre_chicken_box", 45],
-        ["mre_beeftaco_box", 45],
         ["mre_beef_box", 45],
-        ["mre_meatball_box", 45],
-        ["mre_beefstew_box", 45],
-        ["mre_chilimac_box", 45],
         ["mre_veggy_box", 45],
-        ["mre_macaronimarinara_box", 45],
-        ["mre_cheesetort_box", 45],
-        ["mre_mushroomfettuccine_box", 45],
-        ["mre_mexicanchickenstew_box", 45],
-        ["mre_maplesausage_box", 45],
-        ["mre_ravioli_box", 45],
-        ["mre_hashbrownbacon_box", 45],
-        ["mre_lemontuna_box", 45],
-        ["mre_asianbeef_box", 45],
-        ["mre_chickenpesto_box", 45],
-        ["mre_southwestbeef_box", 45],
+        ["mre_chicken_box", 45],
         ["mre_hotdog_box", 45],
+        ["mre_ravioli_box", 45],
         ["1st_aid", 35],
         ["saline", 10],
         ["con_milk", 10],

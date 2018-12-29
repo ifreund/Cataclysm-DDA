@@ -2,15 +2,16 @@
 #ifndef COMMON_TYPES_H
 #define COMMON_TYPES_H
 
+#include "json.h"
+
 #include <limits>
-#include <type_traits>
 
 /**
  * An interval of numeric values between @ref min and @ref max (including both).
  * By default it's [0, 0].
  */
 template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-struct numeric_interval {
+struct numeric_interval : public JsonDeserializer {
     T min = static_cast<T>( 0 );
     T max = static_cast<T>( 0 );
 
@@ -28,13 +29,9 @@ struct numeric_interval {
         return val >= min && val <= max;
     }
 
-    bool empty() const {
-        return max == 0 || min > max;
-    }
-
-    template<typename JsonStream>
-    void deserialize( JsonStream &jsin ) {
-        auto ja = jsin.get_array();
+    using JsonDeserializer::deserialize;
+    void deserialize( JsonIn &jsin ) override {
+        JsonArray ja = jsin.get_array();
         if( ja.size() != 2 ) {
             ja.throw_error( "Intervals should be in format [min, max]." );
         }

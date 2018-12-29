@@ -60,6 +60,9 @@ class string_id
          */
         string_id() : _id(), _cid( -1 ) {}
         /**
+         * Create a copy of the @ref NULL_ID. See @ref null_id_type.
+         */
+        /**
          * Comparison, only useful when the id is used in std::map or std::set as key. Compares
          * the string id as with the strings comparison.
          */
@@ -138,10 +141,9 @@ class string_id
             return _id.empty();
         }
         /**
-         * Returns a null id whose `string_id<T>::is_null()` must always return true. See @ref is_null.
-         * Specializations are defined in string_id_null_ids.cpp to avoid instantiation ordering issues.
+         * The null-id itself. `NULL_ID.is_null()` must always return true. See @ref is_null.
          */
-        static const string_id<T> &NULL_ID();
+        static const string_id<T> NULL_ID;
         /**
          * Returns whether this represents the id of the null-object (in which case it's the null-id).
          * Note that not all types assigned to T may have a null-object. As such, there won't be a
@@ -154,7 +156,7 @@ class string_id
          * that require a (valid) id, but it can still represent a "don't use it" value.
          */
         bool is_null() const {
-            return operator==( NULL_ID() );
+            return operator==( NULL_ID );
         }
         /**
          * Same as `!is_null`, basically one can use it to check for the id referring to an actual
@@ -173,7 +175,7 @@ class string_id
             return !is_null();
         }
 
-        // @todo: Exposed for now. Hide these and make them accessible to the generic_factory only
+        // @todo Exposed for now. Hide these and make them accessible to the generic_factory only
 
         /**
          * Assigns a new value for the cached int id.

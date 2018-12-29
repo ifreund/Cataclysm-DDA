@@ -2,9 +2,8 @@
 #ifndef MONFACTION_H
 #define MONFACTION_H
 
-#include "int_id.h"
 #include "string_id.h"
-
+#include "int_id.h"
 #include <unordered_map>
 
 class monfaction;

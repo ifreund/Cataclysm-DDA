@@ -2,13 +2,9 @@
 #ifndef GATES_H
 #define GATES_H
 
-#include <string>
-
-class JsonObject;
-class player;
-class map;
-class Character;
-struct tripoint;
+#include "player.h"
+#include "enums.h"
+#include "json.h"
 
 namespace gates
 {
@@ -22,7 +18,7 @@ void open_gate( const tripoint &pos, player &p );
 /** opens the gate immediately */
 void open_gate( const tripoint &pos );
 
-}
+};
 
 namespace doors
 {
@@ -33,6 +29,6 @@ namespace doors
 */
 void close_door( map &m, Character &who, const tripoint &closep );
 
-}
+};
 
 #endif

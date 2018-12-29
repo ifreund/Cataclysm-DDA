@@ -3,31 +3,31 @@
 #define PROFESSION_H
 
 #include "string_id.h"
+#include "item_group.h"
+#include "item.h"
 
-#include <list>
-#include <set>
+#include <string>
 #include <vector>
+#include <map>
+#include <set>
 
 template<typename T>
 class generic_factory;
 class profession;
-using Group_tag = std::string;
-class item;
-using itype_id = std::string;
 class player;
 class JsonArray;
 class JsonObject;
 class addiction;
 struct mutation_branch;
 using trait_id = string_id<mutation_branch>;
-struct bionic_data;
-using bionic_id = string_id<bionic_data>;
 enum add_type : int;
 
-class Skill;
-using skill_id = string_id<Skill>;
+    // The weird indentation is thanks to astyle; don't fix it unless you feel like
+    // failing a build or two.
+    class Skill;
+    using skill_id = string_id<Skill>;
 
-class profession
+    class profession
 {
     public:
         typedef std::pair<skill_id, int> StartingSkill;
@@ -37,7 +37,7 @@ class profession
             /** Snippet id, @see snippet_library. */
             std::string snippet_id;
             // compatible with when this was just a std::string
-            itypedec( const char *t ) : type_id( t ) {
+            itypedec( const char *t ) : type_id( t ), snippet_id() {
             }
             itypedec( const std::string &t, const std::string &d ) : type_id( t ), snippet_id( d ) {
             }
@@ -66,7 +66,7 @@ class profession
         itype_id no_bonus; // See profession::items and class json_item_substitution in profession.cpp
 
         std::vector<addiction> _starting_addictions;
-        std::vector<bionic_id> _starting_CBMs;
+        std::vector<std::string> _starting_CBMs;
         std::vector<trait_id> _starting_traits;
         std::set<std::string> flags; // flags for some special properties of the profession
         StartingSkillList  _starting_skills;
@@ -87,7 +87,7 @@ class profession
         static const std::vector<profession> &get_all();
 
         static bool has_initialized();
-        // clear profession map, every profession pointer becomes invalid!
+        // clear profession map, every profession pointer becames invalid!
         static void reset();
         /** calls @ref check_definition for each profession */
         static void check_definitions();
@@ -100,7 +100,7 @@ class profession
         signed int point_cost() const;
         std::list<item> items( bool male, const std::vector<trait_id> &traits ) const;
         std::vector<addiction> addictions() const;
-        std::vector<bionic_id> CBMs() const;
+        std::vector<std::string> CBMs() const;
         const StartingSkillList skills() const;
 
         /**
@@ -108,7 +108,7 @@ class profession
          *
          * Current flags: none
          */
-        bool has_flag( const std::string &flag ) const;
+        bool has_flag( std::string flag ) const;
 
         /**
          * Check if the given player can pick this job with the given amount
@@ -116,7 +116,7 @@ class profession
          *
          * @return true, if player can pick profession. Otherwise - false.
          */
-        bool can_pick( const player &u, int points ) const;
+        bool can_pick( player *u, int points ) const;
         bool is_locked_trait( const trait_id &trait ) const;
         std::vector<trait_id> get_locked_traits() const;
 };

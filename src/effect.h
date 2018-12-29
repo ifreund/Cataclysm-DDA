@@ -2,17 +2,12 @@
 #ifndef EFFECT_H
 #define EFFECT_H
 
-#include "bodypart.h"
-#include "calendar.h"
-#include "enums.h"
 #include "pldata.h"
+#include "json.h"
+#include "enums.h"
 #include "string_id.h"
-#include "translations.h"
-#include "tuple_hash.h"
-
 #include <unordered_map>
 #include <tuple>
-#include <vector>
 
 class effect_type;
 class Creature;
@@ -21,12 +16,10 @@ enum game_message_type : int;
 using efftype_id = string_id<effect_type>;
 struct mutation_branch;
 using trait_id = string_id<mutation_branch>;
-class JsonObject;
-class JsonIn;
-class JsonOut;
+extern template const string_id<effect_type> string_id<effect_type>::NULL_ID;
 
 /** Handles the large variety of weed messages. */
-void weed_msg( player &p );
+void weed_msg(player *p);
 
 enum effect_rating {
     e_good,     // The effect is good for the one who has it.
@@ -73,32 +66,26 @@ class effect_type
         /** Returns true if an effect will only target main body parts (i.e., those with HP). */
         bool get_main_parts() const;
 
-        bool is_show_in_info() const;
-
         /** Loading helper functions */
-        bool load_mod_data( JsonObject &jsobj, const std::string &member );
-        bool load_miss_msgs( JsonObject &jsobj, const std::string &member );
-        bool load_decay_msgs( JsonObject &jsobj, const std::string &member );
+        bool load_mod_data( JsonObject &jsobj, std::string member );
+        bool load_miss_msgs( JsonObject &jsobj, std::string member );
+        bool load_decay_msgs( JsonObject &jsobj, std::string member );
 
         /** Registers the effect in the global map */
         static void register_ma_buff_effect( const effect_type &eff );
 
     protected:
         int max_intensity;
-        int max_effective_intensity;
-        time_duration max_duration;
+        int max_duration;
 
         int dur_add_perc;
         int int_add_val;
 
         int int_decay_step;
         int int_decay_tick;
-        time_duration int_dur_factor;
+        int int_dur_factor;
 
         bool main_parts_only;
-
-        // Determines if effect should be shown in description.
-        bool show_in_info;
 
         std::vector<trait_id> resist_traits;
         std::vector<efftype_id> resist_effects;
@@ -113,11 +100,11 @@ class effect_type
         // TODO: Once addictions are JSON-ized it should be trivial to convert this to a
         // "generic" addiction reduces value
         bool pkill_addict_reduces;
-        // This flag is hard-coded for specific IDs now
+        // This flag is hardcoded for specific IDs now
         // It needs to be set for monster::move_effects
         bool impairs_movement;
 
-        std::vector<translation> name;
+        std::vector<std::string> name;
         std::string speed_mod_name;
         std::vector<std::string> desc;
         std::vector<std::string> reduced_desc;
@@ -136,21 +123,21 @@ class effect_type
         std::unordered_map<std::tuple<std::string, bool, std::string, std::string>, double> mod_data;
 };
 
-class effect
+class effect : public JsonSerializer, public JsonDeserializer
 {
     public:
-        effect() : eff_type( NULL ), duration( 0_turns ), bp( num_bp ),
-            permanent( false ), intensity( 1 ), start_time( calendar::time_of_cataclysm ) {
+        effect() : eff_type( NULL ), duration( 0 ), bp( num_bp ),
+            permanent( false ), intensity( 1 ), start_turn( 0 ) {
         }
-        effect( const effect_type *peff_type, const time_duration dur, body_part part,
-                bool perm, int nintensity, const time_point &nstart_time ) :
+        effect( const effect_type *peff_type, int dur, body_part part,
+                bool perm, int nintensity, int nstart_turn ) :
             eff_type( peff_type ), duration( dur ), bp( part ),
-            permanent( perm ), intensity( nintensity ), start_time( nstart_time ) {
+            permanent( perm ), intensity( nintensity ), start_turn( nstart_turn ) {
         }
         effect( const effect & ) = default;
         effect &operator=( const effect & ) = default;
 
-        /** Dummy effect returned when getting an effect that doesn't exist. */
+        /** Dummy effect effect returned when getting an effect that doesn't exist. */
         static effect null_effect;
 
         /** Compares pointers of this effect with the dummy above. */
@@ -160,8 +147,6 @@ class effect
         std::string disp_name() const;
         /** Returns the description displayed in the player status window. */
         std::string disp_desc( bool reduced = false ) const;
-        /** Returns the short description as set in json. */
-        std::string disp_short_desc( bool reduced = false ) const;
         /** Returns true if a description will be formatted as "Your" + body_part + description. */
         bool use_part_descs() const;
 
@@ -172,21 +157,21 @@ class effect
          *  if their duration is <= 0. This is called in the middle of a loop through all effects, which is
          *  why we aren't allowed to remove the effects here. */
         void decay( std::vector<efftype_id> &rem_ids, std::vector<body_part> &rem_bps,
-                    const time_point &time, bool player );
+                    unsigned int turn, bool player );
 
         /** Returns the remaining duration of an effect. */
-        time_duration get_duration() const;
+        int get_duration() const;
         /** Returns the maximum duration of an effect. */
-        time_duration get_max_duration() const;
+        int get_max_duration() const;
         /** Sets the duration, capping at max_duration if it exists. */
-        void set_duration( time_duration dur, bool alert = false );
+        void set_duration( int dur, bool alert = false );
         /** Mods the duration, capping at max_duration if it exists. */
-        void mod_duration( time_duration dur, bool alert = false );
+        void mod_duration( int dur, bool alert = false );
         /** Multiplies the duration, capping at max_duration if it exists. */
         void mult_duration( double dur, bool alert = false );
 
         /** Returns the turn the effect was applied. */
-        time_point get_start_time() const;
+        int get_start_turn() const;
 
         /** Returns the targeted body_part of the effect. This is num_bp for untargeted effects. */
         body_part get_bp() const;
@@ -197,7 +182,7 @@ class effect
         bool is_permanent() const;
         /** Makes an effect permanent. Note: This pauses the duration, but does not otherwise change it. */
         void pause_effect();
-        /** Makes an effect not permanent. Note: This un-pauses the duration, but does not otherwise change it. */
+        /** Makes an effect not permanent. Note: This unpauses the duration, but does not otherwise change it. */
         void unpause_effect();
 
         /** Returns the intensity of an effect. */
@@ -206,7 +191,7 @@ class effect
         int get_max_intensity() const;
 
         /**
-         * Sets intensity of effect capped by range [1..max_intensity]
+         * Sets inensity of effect capped by range [1..max_intensity]
          * @param val Value to set intensity to
          * @param alert whether decay messages should be displayed
          * @return new intensity of the effect after val subjected to above cap
@@ -214,7 +199,7 @@ class effect
         int set_intensity( int val, bool alert = false );
 
         /**
-         * Modify intensity of effect capped by range [1..max_intensity]
+         * Modify inensity of effect capped by range [1..max_intensity]
          * @param mod Amount to increase current intensity by
          * @param alert whether decay messages should be displayed
          * @return new intensity of the effect after modification and capping
@@ -241,12 +226,12 @@ class effect
         /** Returns the maximum value of a modifier type that get_mod() and get_amount() will push the player to. */
         int get_max_val( std::string arg, bool reduced = false ) const;
         /** Returns true if the given modifier type's trigger chance is affected by size mutations. */
-        bool get_sizing( const std::string &arg ) const;
+        bool get_sizing( std::string arg ) const;
         /** Returns the approximate percentage chance of a modifier type activating on any given tick, used for descriptions. */
         double get_percentage( std::string arg, int val, bool reduced = false ) const;
         /** Checks to see if a given modifier type can activate, and performs any rolls required to do so. mod is a direct
          *  multiplier on the overall chance of a modifier type activating. */
-        bool activated( const time_point &when, std::string arg, int val,
+        bool activated( int turn, std::string arg, int val,
                         bool reduced = false, double mod = 1 ) const;
 
         /** Returns the modifier caused by addictions. Currently only handles painkiller addictions. */
@@ -256,7 +241,7 @@ class effect
         /** Returns the percentage value by further applications of existing effects' duration is multiplied by. */
         int get_dur_add_perc() const;
         /** Returns the number of turns it takes for the intensity to fall by 1 or 0 if intensity isn't based on duration. */
-        time_duration get_int_dur_factor() const;
+        int get_int_dur_factor() const;
         /** Returns the amount an already existing effect intensity is modified by further applications of the same effect. */
         int get_int_add_val() const;
 
@@ -274,30 +259,22 @@ class effect
             return eff_type->id;
         }
 
-        void serialize( JsonOut &json ) const;
-        void deserialize( JsonIn &jsin );
+        using JsonSerializer::serialize;
+        void serialize( JsonOut &json ) const override;
+        using JsonDeserializer::deserialize;
+        void deserialize( JsonIn &jsin ) override;
 
     protected:
         const effect_type *eff_type;
-        time_duration duration;
+        int duration;
         body_part bp;
         bool permanent;
         int intensity;
-        time_point start_time;
+        int start_turn;
 
 };
 
 void load_effect_type( JsonObject &jo );
 void reset_effect_types();
-
-std::string texitify_base_healing_power( const int power );
-std::string texitify_healing_power( const int power );
-
-// Inheritance here allows forward declaration of the map in class Creature.
-// Storing body_part as an int to make things easier for hash and JSON
-class effects_map : public
-    std::unordered_map<efftype_id, std::unordered_map<body_part, effect, std::hash<int>>>
-{
-};
 
 #endif

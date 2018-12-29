@@ -2,13 +2,11 @@
 #ifndef MAPBUFFER_H
 #define MAPBUFFER_H
 
-#include "enums.h"
-
-#include <list>
 #include <map>
+#include <list>
 #include <memory>
 #include <string>
-
+#include "enums.h"
 struct point;
 struct tripoint;
 struct submap;
@@ -22,6 +20,8 @@ class mapbuffer
         mapbuffer();
         ~mapbuffer();
 
+        /** Load the entire world from savefiles into submaps in this instance. **/
+        void load( std::string worldname );
         /** Store all submaps in this instance into savefiles.
          * @param delete_after_save If true, the saved submaps are removed
          * from the mapbuffer (and deleted).

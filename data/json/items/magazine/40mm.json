@@ -9,7 +9,7 @@
     "rigid": false,
     "material": "steel",
     "symbol": "#",
-    "color": "light_gray",
+    "color": "ltgray",
     "ammo_type": "40mm",
     "capacity": 50,
     "count": 25,

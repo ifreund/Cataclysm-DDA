@@ -1,5 +1,4 @@
 #include "char_validity_check.h"
-
 #include <cctype>
 
 /**
@@ -13,7 +12,7 @@
 bool is_char_allowed( long ch )
 {
     if( !std::isprint( ch ) && ch <= 127 ) {
-        // above 127 are non-ASCII, therefore Unicode, therefore OK
+        // above 127 are non-ascii, therefor unicode, therefor OK
         return false;
     }
     if( ch == '\\' || ch == '/' ) {

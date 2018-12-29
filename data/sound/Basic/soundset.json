@@ -4,7 +4,7 @@
         "id" : "menu_move",
         "volume" : 100,
         "files" : [
-            "menu_move.ogg"
+            "menu_move.wav"
         ]
     },
     {
@@ -12,7 +12,7 @@
         "id" : "menu_error",
         "volume" : 100,
         "files" : [
-            "menu_error.ogg"
+            "menu_error.wav"
         ]
     }
 ]

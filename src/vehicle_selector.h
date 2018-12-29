@@ -2,19 +2,18 @@
 #ifndef VEHICLE_SELECTOR_H
 #define VEHICLE_SELECTOR_H
 
-#include "visitable.h"
-
 #include <vector>
 
+#include "visitable.h"
+
 class vehicle;
-struct tripoint;
 
 class vehicle_cursor : public visitable<vehicle_cursor>
 {
     public:
-        vehicle_cursor( vehicle &veh, std::ptrdiff_t part ) : veh( veh ), part( part ) {}
+        vehicle_cursor( vehicle &veh, int part ) : veh( veh ), part( part ) {};
         vehicle &veh;
-        std::ptrdiff_t part;
+        int part;
 };
 
 class vehicle_selector : public visitable<vehicle_selector>
@@ -34,10 +33,8 @@ class vehicle_selector : public visitable<vehicle_selector>
          *  @param pos map position at which to start each query which may or may not contain vehicle
          *  @param radius number of adjacent tiles to include (searching from pos outwards)
          *  @param accessible whether found items must be accessible from pos to be considered
-         *  @param visibility_only accessibility based on line of sight, not walkability
          */
-        vehicle_selector( const tripoint &pos, int radius = 0, bool accessible = true,
-                          bool visibility_only = false );
+        vehicle_selector( const tripoint &pos, int radius = 0, bool accessible = true );
 
         /**
          *  Constructs vehicle_selector used for querying items located on vehicle tiles
