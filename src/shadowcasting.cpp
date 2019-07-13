@@ -601,24 +601,24 @@ void cast_zlight(
     // ...
     cast_horizontal_zlight_segment < 1, 0, 0, 1, 1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
-    // ..@
-    // ..
-    // .
-    cast_horizontal_zlight_segment < 0, -1, 1, 0, 1, T, calc, is_transparent, accumulate > (
-        output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
-    //   @
-    //  ..
-    // ...
-    cast_horizontal_zlight_segment < -1, 0, 0, 1, 1, T, calc, is_transparent, accumulate > (
-        output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
     //   .
     //  ..
     // @..
-    cast_horizontal_zlight_segment < 0, 1, -1, 0, 1, T, calc, is_transparent, accumulate > (
+    cast_horizontal_zlight_segment < 0, -1, 1, 0, 1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
     // ...
     // ..
     // @
+    cast_horizontal_zlight_segment < -1, 0, 0, 1, 1, T, calc, is_transparent, accumulate > (
+        output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    // ..@
+    // ..
+    // .
+    cast_horizontal_zlight_segment < 0, 1, -1, 0, 1, T, calc, is_transparent, accumulate > (
+        output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    //   @
+    //  ..
+    // ...
     cast_horizontal_zlight_segment < 1, 0, 0, -1, 1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
     // .
