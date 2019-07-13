@@ -282,12 +282,13 @@ void cast_horizontal_zlight_segment(
                             // A span not present, so previous row might be opaque
                             // It is sufficient to check only the directly previous transparency since
                             // if there were any changes we would have detected them and already stopped
-                            if( previous_row_transparencies[delta.x - 1] ) {
+                            if( first_row || previous_row_transparencies[delta.x - 1] ) {
                                 // Previous row is transparent, so use the trailing edge of the current row as start major
                                 // B is transparent, so use the trailing edge of the next row as end major
                                 const slope next_trailing_edge_major( ( delta.z + 1 ) * 2 - 1, delta.y * 2 + 1 );
                                 spans.emplace( this_span,
-                                               trailing_edge_major, next_trailing_edge_major,
+                                               std::max( this_span->start_major, trailing_edge_major ),
+                                               next_trailing_edge_major,
                                                this_span->start_minor, trailing_edge_minor,
                                                next_cumulative_transparency );
                             } else {
@@ -296,7 +297,8 @@ void cast_horizontal_zlight_segment(
                                 // B is transparent, so use the trailing edge of the next row as end major
                                 const slope next_trailing_edge_major( ( delta.z + 1 ) * 2 - 1, delta.y * 2 + 1 );
                                 spans.emplace( this_span,
-                                               previous_leading_edge_major, next_trailing_edge_major,
+                                               std::max( this_span->start_major, previous_leading_edge_major ),
+                                               next_trailing_edge_major,
                                                this_span->start_minor, trailing_edge_minor,
                                                next_cumulative_transparency, true );
                             }
