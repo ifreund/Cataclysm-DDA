@@ -130,6 +130,7 @@ activity_handlers::do_turn_functions = {
     { activity_id( "ACT_START_FIRE" ), start_fire_do_turn },
     { activity_id( "ACT_VIBE" ), vibe_do_turn },
     { activity_id( "ACT_HAND_CRANK" ), hand_crank_do_turn },
+    { activity_id( "ACT_HEAT_ITEM" ), heat_item_do_turn },
     { activity_id( "ACT_OXYTORCH" ), oxytorch_do_turn },
     { activity_id( "ACT_AIM" ), aim_do_turn },
     { activity_id( "ACT_PICKUP" ), pickup_do_turn },
@@ -203,6 +204,7 @@ activity_handlers::finish_functions = {
     { activity_id( "ACT_FIRSTAID" ), firstaid_finish },
     { activity_id( "ACT_FISH" ), fish_finish },
     { activity_id( "ACT_FORAGE" ), forage_finish },
+    { activity_id( "ACT_HEAT_ITEM" ), heat_item_finish },
     { activity_id( "ACT_HOTWIRE_CAR" ), hotwire_finish },
     { activity_id( "ACT_LONGSALVAGE" ), longsalvage_finish },
     { activity_id( "ACT_MAKE_ZLAVE" ), make_zlave_finish },
@@ -4442,3 +4444,13 @@ void activity_handlers::mind_splicer_finish( player_activity *act, player *p )
     data_card.contents.clear();
     data_card.put_in( item( "mind_scan_robofac" ) );
 }
+
+void activity_handlers::heat_item_do_turn( player_activity *act, player *p ) {
+
+}
+
+void activity_handlers::heat_item_finish( player_activity *act, player *p ) {
+
+}
+
+

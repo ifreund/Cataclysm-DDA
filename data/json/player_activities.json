@@ -796,5 +796,14 @@
     "suspendable": false,
     "based_on": "time",
     "no_resume": true
+  },
+  {
+    "id": "ACT_HEAT_ITEM",
+    "type": "activity_type",
+    "activity_level": "NO_EXERCISE",
+    "verb": "heating food",
+    "suspendable": false,
+    "based_on": "time",
+    "no_resume": true
   }
 ]

@@ -2884,33 +2884,6 @@ bool repair_item_actor::can_use_tool( const player &p, const item &tool, bool pr
     return true;
 }
 
-static item_location get_item_location( player &p, item &it, const tripoint &pos )
-{
-    // Item on a character
-    if( p.has_item( it ) ) {
-        return item_location( p, &it );
-    }
-
-    // Item in a vehicle
-    if( const optional_vpart_position &vp = g->m.veh_at( pos ) ) {
-        vehicle_cursor vc( vp->vehicle(), vp->part_index() );
-        bool found_in_vehicle = false;
-        vc.visit_items( [&]( const item * e ) {
-            if( e == &it ) {
-                found_in_vehicle = true;
-                return VisitResponse::ABORT;
-            }
-            return VisitResponse::NEXT;
-        } );
-        if( found_in_vehicle ) {
-            return item_location( vc, &it );
-        }
-    }
-
-    // Item on the map
-    return item_location( pos, &it );
-}
-
 int repair_item_actor::use( player &p, item &it, bool, const tripoint &position ) const
 {
     if( !can_use_tool( p, it, true ) ) {

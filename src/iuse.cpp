@@ -5472,9 +5472,48 @@ int iuse::handle_ground_graffiti( player &p, item *it, const std::string &prefix
 }
 
 /**
- * Heats up a food item.
- * @return 1 if an item was heated, false if nothing was heated.
+ * Start ACT_HEAT_ITEM to heat up food
+ * @return true if the activity was started, false otherwise
  */
+static bool start_act_heat_item( player &p, item &tool ) {
+    item_location to_heat = g->inv_map_splice( []( const item & itm ) {
+        return( ( itm.is_food() && !itm.item_tags.count( "HOT" ) ) ||
+                ( itm.is_food_container() && !itm.contents.front().item_tags.count( "HOT" ) ) );
+    }, _( "Heat up what?" ), 1, _( "You don't have appropriate food to heat up." ) );
+
+    if( !to_heat ) {
+        add_msg( m_info, _( "Never mind." ) );
+        return false;
+    }
+
+    p->assign_activity( activity_id( "ACT_HEAT_ITEM" ) );
+    p->activity.targets.push_back( to_heat );
+
+    // Tool on the character
+    if( p.has_item( it ) ) {
+        p->activity.targets.push_back( item_location( p, &tool ) );
+    }
+
+    // Tool in a vehicle
+    if( const optional_vpart_position &vp = g->m.veh_at( pos ) ) {
+        vehicle_cursor vc( vp->vehicle(), vp->part_index() );
+        bool found_in_vehicle = false;
+        vc.visit_items( [&]( const item * e ) {
+            if( e == &it ) {
+                found_in_vehicle = true;
+                return VisitResponse::ABORT;
+            }
+            return VisitResponse::NEXT;
+        } );
+        if( found_in_vehicle ) {
+            return item_location( vc, &it );
+        }
+    }
+
+    // Item on the map
+    return item_location( pos, &it );
+}
+
 static bool heat_item( player &p )
 {
     auto loc = g->inv_map_splice( []( const item & itm ) {
