@@ -497,11 +497,10 @@ static void run_spot_check( const grid_overlay &test_case, const grid_overlay &e
 
     if( fov_3d ) {
         cast_zlight<float, sight_calc, sight_check, accumulate_transparency>( seen_squares,
-                transparency_cache, floor_cache, ORIGIN, 0, 1.0 );
+                transparency_cache, floor_cache, { ORIGIN.x, ORIGIN.y, ORIGIN.z - OVERMAP_DEPTH }, 0, 1.0 );
     } else {
         castLightAll<float, float, sight_calc, sight_check, update_light, accumulate_transparency>(
-            seen_squares, transparency_cache, ORIGIN );
-
+            *seen_squares[11], *transparency_cache[11], { ORIGIN.x, ORIGIN.y } );
     }
     bool passed = true;
     std::ostringstream trans_grid;

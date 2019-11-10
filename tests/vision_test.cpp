@@ -223,8 +223,7 @@ static void full_map_test( const std::vector<std::string> &setup,
 struct vision_test_case {
     std::vector<std::string> setup;
     std::vector<std::string> expected_results;
-    calendar time;
-    bool test_3d;
+    time_point time;
 
     static void transpose( std::vector<std::string> &v ) {
         if( v.empty() ) {
@@ -470,13 +469,8 @@ TEST_CASE( "vision_see_wall_in_moonlight", "[shadowcasting][vision]" )
             "111",
             "111",
         },
-<<<<<<< HEAD
         // Want a night time
         full_moon - time_past_midnight( full_moon ),
-        true
-=======
-        DAYS( days_till_full_moon )
->>>>>>> Test 3d fov in all vision tests
     };
 
     t.test_all();
