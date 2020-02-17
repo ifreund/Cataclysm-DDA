@@ -1763,7 +1763,7 @@ void monster::stumble()
             !( avoid_water &&
                g->m.has_flag( TFLAG_SWIMMABLE, dest ) &&
                !g->m.has_flag( TFLAG_SWIMMABLE, pos() ) ) &&
-            ( g->critter_at( dest, is_hallucination() ) == nullptr ) ) {
+            ( g->critter_at<Creature>( dest, is_hallucination() ) == nullptr ) ) {
             move_to( dest, true );
         }
     }
