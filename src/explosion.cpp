@@ -869,6 +869,10 @@ bool fragment_cloud::operator==( const fragment_cloud &that )
     return velocity == that.velocity && density == that.density;
 }
 
+bool fragment_cloud::operator!=( const fragment_cloud &that ) {
+    return !(*this == that);
+}
+
 bool operator<( const fragment_cloud &us, const fragment_cloud &them )
 {
     return us.density < them.density && us.velocity < them.velocity;
