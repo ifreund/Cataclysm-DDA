@@ -1,6 +1,7 @@
 #include "shadowcasting.h"
 
 #include <list>
+#include <thread>
 
 #include "cached_options.h"
 #include "cuboid_rectangle.h"
@@ -498,6 +499,7 @@ void cast_zlight(
 {
     // Down lateral
 
+    auto downlat_1 = [&]() {
     // @..
     //  ..
     //   .
@@ -518,6 +520,8 @@ void cast_zlight(
     // @
     cast_horizontal_zlight_segment < -1, 0, 0, 1, -1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    };
+    auto downlat_2 = [&]() {
     // ..@
     // ..
     // .
@@ -538,9 +542,11 @@ void cast_zlight(
     //   @
     cast_horizontal_zlight_segment < -1, 0, 0, -1, -1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    };
 
     // Up lateral
 
+    auto uplat_1 = [&]() {
     // @..
     //  ..
     //   .
@@ -561,6 +567,8 @@ void cast_zlight(
     // ...
     cast_horizontal_zlight_segment < -1, 0, 0, 1, 1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    };
+    auto uplat_2 = [&]() {
     //   .
     //  ..
     // @..
@@ -581,9 +589,11 @@ void cast_zlight(
     //   @
     cast_horizontal_zlight_segment < -1, 0, 0, -1, 1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    };
 
     // Straight up
 
+    auto up = [&]() {
     // @.
     // ..
     cast_vertical_zlight_segment < 1, 1, 1, T, calc, is_transparent, accumulate > (
@@ -600,9 +610,11 @@ void cast_zlight(
     // .@
     cast_vertical_zlight_segment < -1, -1, 1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    };
 
     // Straight down
 
+    auto down = [&] {
     // @.
     // ..
     cast_vertical_zlight_segment < 1, 1, -1, T, calc, is_transparent, accumulate > (
@@ -619,6 +631,21 @@ void cast_zlight(
     // .@
     cast_vertical_zlight_segment < -1, -1, -1, T, calc, is_transparent, accumulate > (
         output_caches, input_arrays, floor_caches, origin, offset_distance, numerator );
+    };
+
+    std::thread t1(downlat_1);
+    std::thread t2(downlat_2);
+    std::thread t3(down);
+    std::thread t4(uplat_1);
+    std::thread t5(uplat_2);
+    std::thread t6(up);
+
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+    t5.join();
+    t6.join();
 }
 
 // I can't figure out how to make implicit instantiation work when the parameters of
